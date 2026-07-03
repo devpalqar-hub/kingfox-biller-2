@@ -456,6 +456,12 @@ class PrinterController extends GetxController {
         : dtFmt.format(DateTime.now());
 
     labelValueRow('Invoice#', inv, bold: true);
+    if (data.payments.isNotEmpty) {
+      int invoiceID = int.parse(data!.payments.first.invoiceID ?? "0") + 881;
+
+      labelValueRow('Bill No#', invoiceID.toString(), bold: true);
+    }
+
     labelValueRow('Date', dateStr);
 
     // ── 6. Customer ────────────────────────────────────────────────────────

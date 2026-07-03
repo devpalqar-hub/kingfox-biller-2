@@ -1,11 +1,7 @@
 PODS:
-  - flutter_libserialport (0.0.1):
-    - FlutterMacOS
-    - libserialport
   - flutter_thermal_printer (0.0.1):
     - FlutterMacOS
   - FlutterMacOS (1.0.0)
-  - libserialport (0.1.1)
   - mobile_scanner (7.0.0):
     - Flutter
     - FlutterMacOS
@@ -19,7 +15,6 @@ PODS:
     - FlutterMacOS
 
 DEPENDENCIES:
-  - flutter_libserialport (from `Flutter/ephemeral/.symlinks/plugins/flutter_libserialport/macos`)
   - flutter_thermal_printer (from `Flutter/ephemeral/.symlinks/plugins/flutter_thermal_printer/macos`)
   - FlutterMacOS (from `Flutter/ephemeral`)
   - mobile_scanner (from `Flutter/ephemeral/.symlinks/plugins/mobile_scanner/darwin`)
@@ -27,13 +22,7 @@ DEPENDENCIES:
   - shared_preferences_foundation (from `Flutter/ephemeral/.symlinks/plugins/shared_preferences_foundation/darwin`)
   - universal_ble (from `Flutter/ephemeral/.symlinks/plugins/universal_ble/darwin`)
 
-SPEC REPOS:
-  trunk:
-    - libserialport
-
 EXTERNAL SOURCES:
-  flutter_libserialport:
-    :path: Flutter/ephemeral/.symlinks/plugins/flutter_libserialport/macos
   flutter_thermal_printer:
     :path: Flutter/ephemeral/.symlinks/plugins/flutter_thermal_printer/macos
   FlutterMacOS:
@@ -48,10 +37,8 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/universal_ble/darwin
 
 SPEC CHECKSUMS:
-  flutter_libserialport: 2c523cb8d8203fc6d1b0da88190da31ac970eb93
   flutter_thermal_printer: 18af8e8199eec8cb8fbe2c89a65612da3aae0b8e
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
-  libserialport: 1cb25e66ef3c92a8e59c2ea3820302c3fa2268cd
   mobile_scanner: 9157936403f5a0644ca3779a38ff8404c5434a93
   printing: c4cf83c78fd684f9bc318e6aadc18972aa48f617
   shared_preferences_foundation: 7036424c3d8ec98dfe75ff1667cb0cd531ec82bb

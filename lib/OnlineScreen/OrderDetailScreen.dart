@@ -393,22 +393,22 @@ class _ProgressCard extends StatelessWidget {
             }),
           ),
           _HDivider(),
-          Row(
-            children: [
-              Text(
-                "Expected by ",
-                style: TextStyle(fontSize: 11.sp, color: _textSec),
-              ),
-              Text(
-                "Today, 3:00 PM",
-                style: TextStyle(
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.w500,
-                  color: _textPri,
-                ),
-              ),
-            ],
-          ),
+          // Row(
+          //   children: [
+          //     Text(
+          //       "Expected by ",
+          //       style: TextStyle(fontSize: 11.sp, color: _textSec),
+          //     ),
+          //     Text(
+          //       "Today, 3:00 PM",
+          //       style: TextStyle(
+          //         fontSize: 12.sp,
+          //         fontWeight: FontWeight.w500,
+          //         color: _textPri,
+          //       ),
+          //     ),
+          //   ],
+          // ),
         ],
       ),
     );

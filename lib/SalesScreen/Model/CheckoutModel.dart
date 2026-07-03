@@ -183,14 +183,22 @@ class CartItem {
 class Payment {
   final int? id;
   final String? paymentMethod;
+  final String? invoiceID;
   final double? amount;
   final String? paidAt;
 
-  const Payment({this.id, this.paymentMethod, this.amount, this.paidAt});
+  const Payment({
+    this.id,
+    this.paymentMethod,
+    this.amount,
+    this.paidAt,
+    this.invoiceID,
+  });
 
   factory Payment.fromJson(Map<String, dynamic> j) => Payment(
     id: j['id'],
     paymentMethod: j['paymentMethod'],
+    invoiceID: j["invoiceId"].toString(),
     amount: double.tryParse(j['amount']?.toString() ?? ''),
     paidAt: j['paidAt'],
   );

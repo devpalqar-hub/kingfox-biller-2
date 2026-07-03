@@ -36,6 +36,8 @@ class PaymentMethodCard extends StatelessWidget {
                       _compactOption(ctrl, "Offline", "OFFLINE", isType: true),
                       SizedBox(width: 6.w),
                       _compactOption(ctrl, "Online", "ONLINE", isType: true),
+                      SizedBox(width: 6.w),
+                      _compactOption(ctrl, "B2B", "B2B", isType: true),
                     ],
                   ),
                 ],
@@ -156,13 +158,14 @@ class PaymentMethodCard extends StatelessWidget {
         : ctrl.isPaymentSelected(value);
     return GestureDetector(
       onTap: () {
-        ctrl.upiAmountController.clear();
-        ctrl.cardAmountController.clear();
-        ctrl.cashAmountController.clear();
-        isType
-            ? ctrl.selectedOrderType = value
-            : ctrl.togglePaymentMethod(value);
-        if (isType) ctrl.update();
+        if (isType) {
+          ctrl.changeOrderType(value);
+        } else {
+          ctrl.upiAmountController.clear();
+          ctrl.cardAmountController.clear();
+          ctrl.cashAmountController.clear();
+          ctrl.togglePaymentMethod(value);
+        }
       },
       child: Container(
         height: 34.h, // Increased

@@ -36,6 +36,7 @@ class Header extends StatelessWidget {
               _tab(controller, "Overview & History", 1),
               _tab(controller, "Inventory", 2),
               _tab(controller, "Online", 3),
+              _tab(controller, "Stocks", 4),
 
               const Spacer(),
 

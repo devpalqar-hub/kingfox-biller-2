@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter_libserialport/flutter_libserialport.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:kinfox_biller/OrderCompleteDailogue/OrderCompleteDailogue.dart';
@@ -27,7 +26,7 @@ class AddProductController extends GetxController {
   String? couponError;
   String? voucherError;
   int? attendedByStaffId;
-  String selectedOrderType = "OFFLINE";
+  String selectedOrderType = "OFFLINE"; // OFFLINE, ONLINE, B2B
   List<LuckyDrawCampaign> campaigns = [];
   LuckyDrawCampaign? selectedCampaign;
   List<StaffModel> staffList = [];
@@ -158,6 +157,15 @@ class AddProductController extends GetxController {
   void setPaymentMethod(String method) {
     selectedPaymentMethod = method.toUpperCase();
     update();
+  }
+
+  /// Updates the selected order type (OFFLINE, ONLINE, B2B) and refreshes
+  /// the cart so pricing/GST rules tied to order type are recalculated.
+  void changeOrderType(String orderType) {
+    if (selectedOrderType == orderType) return;
+    selectedOrderType = orderType;
+    update();
+    getCart();
   }
 
   void getSession({bool isFirst = false}) async {
@@ -300,11 +308,13 @@ class AddProductController extends GetxController {
     String? couponCode,
     double? manualDiscountAmount,
     double? manualDiscountPercent,
+    String? orderType,
   }) async {
     isLoading = true;
     update();
 
     final applied = couponCode ?? appliedCoupon;
+    final appliedOrderType = orderType ?? selectedOrderType;
 
     if (isPercentageDiscount) {
       manualDiscountPercent ??= double.tryParse(discountController.text.trim());
@@ -328,6 +338,11 @@ class AddProductController extends GetxController {
     if (addons.isNotEmpty) queryParams['addons'] = jsonEncode(addons);
     queryParams["billingSessionId"] = selectedSessionId.toString();
 
+    // Optional order type: ONLINE, OFFLINE, B2B
+    if (appliedOrderType.isNotEmpty) {
+      queryParams['orderType'] = appliedOrderType;
+    }
+
     final uri = Uri.parse(
       "$baseUrl/billing/cart",
     ).replace(queryParameters: queryParams);
@@ -343,6 +358,7 @@ class AddProductController extends GetxController {
 
       cart = CartModel.fromJson(data);
       appliedCoupon = applied;
+      selectedOrderType = appliedOrderType;
       if (applied.isNotEmpty && (cart?.couponDiscountAmount ?? 0) == 0) {
         couponError = "Invalid or expired coupon";
 

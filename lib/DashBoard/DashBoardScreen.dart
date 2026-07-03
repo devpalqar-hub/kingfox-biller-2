@@ -8,6 +8,7 @@ import 'package:kinfox_biller/OnlineScreen/OnlineOrderScreen.dart';
 import 'package:kinfox_biller/OverViewScreen/OverViewScreen.dart';
 import 'package:kinfox_biller/SalesScreen/SalesScreen.dart';
 import 'package:kinfox_biller/SalesScreen/Service/PrinterController.dart';
+import 'package:kinfox_biller/StocksScreen/StocksScreen.dart';
 
 class Dashboardscreen extends StatelessWidget {
   Dashboardscreen({super.key});
@@ -21,6 +22,7 @@ class Dashboardscreen extends StatelessWidget {
     const OverviewScreen(),
     const InventoryManagementScreen(),
     const OnlineOrderScreen(),
+    const StocksScreen(),
   ];
 
   @override
