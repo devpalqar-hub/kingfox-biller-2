@@ -1,10 +1,11 @@
-// lib/models/lucky_draw_model.dart
+
 class BranchModel {
   final int id;
   final String name;
   final String phone;
   final String address;
   final String type;
+  final bool isB2BBranch;
 
   BranchModel({
     required this.id,
@@ -12,15 +13,17 @@ class BranchModel {
     required this.phone,
     required this.address,
     required this.type,
+    required this.isB2BBranch,
   });
 
   factory BranchModel.fromJson(Map<String, dynamic> json) {
     return BranchModel(
       id: json['id'],
       name: json['name'],
-      phone: json['phone'],
-      address: json['address'],
-      type: json['type'],
+      phone: json['phone'] ?? '',
+      address: json['address'] ?? '',
+      type: json['type'] ?? '',
+      isB2BBranch: json['isB2BBranch'] ?? false,
     );
   }
 }

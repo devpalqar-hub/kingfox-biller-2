@@ -1,0 +1,41 @@
+PODS:
+  - Flutter (1.0.0)
+  - flutter_thermal_printer (0.0.1):
+    - Flutter
+  - fluttertoast (0.0.2):
+    - Flutter
+  - printing (1.0.0):
+    - Flutter
+  - universal_ble (0.0.1):
+    - Flutter
+    - FlutterMacOS
+
+DEPENDENCIES:
+  - Flutter (from `Flutter`)
+  - flutter_thermal_printer (from `.symlinks/plugins/flutter_thermal_printer/ios`)
+  - fluttertoast (from `.symlinks/plugins/fluttertoast/ios`)
+  - printing (from `.symlinks/plugins/printing/ios`)
+  - universal_ble (from `.symlinks/plugins/universal_ble/darwin`)
+
+EXTERNAL SOURCES:
+  Flutter:
+    :path: Flutter
+  flutter_thermal_printer:
+    :path: ".symlinks/plugins/flutter_thermal_printer/ios"
+  fluttertoast:
+    :path: ".symlinks/plugins/fluttertoast/ios"
+  printing:
+    :path: ".symlinks/plugins/printing/ios"
+  universal_ble:
+    :path: ".symlinks/plugins/universal_ble/darwin"
+
+SPEC CHECKSUMS:
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  flutter_thermal_printer: 56e0926d5ac26e5f407cdf760013313dee05a318
+  fluttertoast: 2c67e14dce98bbdb200df9e1acf610d7a6264ea1
+  printing: 54ff03f28fe9ba3aa93358afb80a8595a071dd07
+  universal_ble: 45519b2aeafe62761e2c6309f8927edb5288b914
+
+PODFILE CHECKSUM: 53a6aebc29ccee84c41f92f409fc20cd4ca011f1
+
+COCOAPODS: 1.16.2

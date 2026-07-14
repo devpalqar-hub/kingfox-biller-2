@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:kinfox_biller/LoginScreen/Service/AuthController.dart';
 import 'package:kinfox_biller/SalesScreen/Service/AddProductController.dart';
 
 class PaymentMethodCard extends StatelessWidget {
@@ -10,6 +11,9 @@ class PaymentMethodCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GetBuilder<AddProductController>(
       builder: (ctrl) {
+        final auth = Get.find<AuthController>();
+        final bool isManager = auth.userRole == "manager";
+
         return Container(
           padding: EdgeInsets.all(10.w),
           decoration: BoxDecoration(
@@ -20,29 +24,131 @@ class PaymentMethodCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    "Payment & Order Type",
-                    style: TextStyle(
-                      fontSize: 14.sp,
-                      fontWeight: FontWeight.w600,
+              if (isManager) ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Payment & Order Type",
+                      style: TextStyle(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ), // Increased
-                  // Order Type Toggle Compact
-                  Row(
-                    children: [
-                      _compactOption(ctrl, "Offline", "OFFLINE", isType: true),
-                      SizedBox(width: 6.w),
-                      _compactOption(ctrl, "Online", "ONLINE", isType: true),
-                      SizedBox(width: 6.w),
-                      _compactOption(ctrl, "B2B", "B2B", isType: true),
-                    ],
+                    Row(
+                      children: [
+                        _compactOption(
+                          ctrl,
+                          "Offline",
+                          "OFFLINE",
+                          isType: true,
+                        ),
+                        SizedBox(width: 6.w),
+                        _compactOption(ctrl, "Online", "ONLINE", isType: true),
+                        SizedBox(width: 6.w),
+                        _compactOption(ctrl, "B2B", "B2B", isType: true),
+                      ],
+                    ),
+                  ],
+                ),
+                SizedBox(height: 8.h),
+              ],
+
+              /// Cashier - only Offline
+              if (!isManager) ...[
+                Row(
+                  children: [
+                    Text(
+                      "Payment & Order Type",
+                      style: TextStyle(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    SizedBox(width: 10.w),
+                    Container(
+                      height: 34.h,
+                      padding: EdgeInsets.symmetric(horizontal: 14.w),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: const Color(0xff1D4ED8),
+                        borderRadius: BorderRadius.circular(6.r),
+                      ),
+                      child: Text(
+                        "Offline",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 8.h),
+              ],
+
+              if (isManager && ctrl.selectedOrderType == "B2B") ...[
+                SizedBox(
+                  height: 36.h,
+                  child: DropdownButtonFormField<int>(
+                    value: ctrl.selectedBranchId,
+                    isDense: true,
+                    hint: Text(
+                      "Choose Branch (Optional)",
+                      style: TextStyle(fontSize: 12.sp, color: Colors.black),
+                    ),
+                    decoration: InputDecoration(
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 10.w,
+                        vertical: 6.h,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(6.r),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(6.r),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(6.r),
+                        borderSide: const BorderSide(color: Colors.blue),
+                      ),
+                      suffixIcon: ctrl.selectedBranchId != null
+                          ? IconButton(
+                              icon: Icon(
+                                Icons.close,
+                                size: 11.sp,
+                                color: Colors.black,
+                              ),
+                              splashRadius: 16,
+                              onPressed: () {
+                                ctrl.selectedBranchId = null;
+                                ctrl.update();
+                              },
+                            )
+                          : null,
+                    ),
+                    items: ctrl.branches
+                        .where((branch) => branch.isB2BBranch)
+                        .map(
+                          (branch) => DropdownMenuItem<int>(
+                            value: branch.id,
+                            child: Text(
+                              branch.name,
+                              style: TextStyle(fontSize: 11.sp),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      ctrl.selectedBranchId = value;
+                      ctrl.update();
+                    },
                   ),
-                ],
-              ),
-              SizedBox(height: 8.h),
+                ),
+                SizedBox(height: 8.h),
+              ],
 
               Row(
                 children: [

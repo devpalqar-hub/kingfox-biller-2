@@ -17,6 +17,7 @@ import 'package:flutter/material.dart';
 class AddProductController extends GetxController {
   bool isLoading = false;
   bool isUpdatingQty = false;
+ int? selectedBranchId;
 
   int? cartId;
   double subtotal = 0;
@@ -48,6 +49,7 @@ class AddProductController extends GetxController {
   final discountController = TextEditingController();
 
   List<String> selectedPaymentMethods = [];
+  List<BranchModel> branches = [];
 
   bool isPaymentSelected(String method) {
     return selectedPaymentMethods.contains(method);
@@ -257,6 +259,7 @@ class AddProductController extends GetxController {
     voucherCountController.text = "1";
     fetchCampaigns();
     fetchStaff();
+    fetchBranches();
     getCart();
     getSession(isFirst: true);
   }
@@ -419,176 +422,220 @@ class AddProductController extends GetxController {
   }
 
   Future<bool> checkoutCart({
-    required String paymentMethod,
-    String? customerName,
-    String? customerPhone,
-    String? customerEmail,
-    String? customerAddress,
-    String? couponCode,
-    int? campaignId,
-    int? voucherCount,
-    double? manualDiscountAmount,
-    double? manualDiscountPercent,
-    int? attendedByStaffId,
-  }) async {
-    couponError = null;
-    voucherError = null;
+  required String paymentMethod,
+  String? customerName,
+  String? customerPhone,
+  String? customerEmail,
+  String? customerAddress,
+  String? couponCode,
+  int? campaignId,
+  int? voucherCount,
+  double? manualDiscountAmount,
+  double? manualDiscountPercent,
+  int? attendedByStaffId,
+  int? targetBranchId,
+}) async {
+  couponError = null;
+  voucherError = null;
 
-    if (cart == null || (cart!.returnItems.isEmpty && cart!.items.isEmpty)) {
-      return false;
-    }
+  if (cart == null || (cart!.returnItems.isEmpty && cart!.items.isEmpty)) {
+    return false;
+  }
 
-    if (selectedCampaign == null &&
-        campaigns.isNotEmpty &&
-        cart!.items.isNotEmpty) {
-      voucherError = "Please select atleast one lucky coupon";
-      update();
-      return false;
-    }
-
-    if (selectedStaff == null &&
-        staffList.isNotEmpty &&
-        cart!.items.isNotEmpty) {
-      couponError = "Please select the sales person";
-      update();
-      return false;
-    }
-
-    if (isPercentageDiscount) {
-      manualDiscountPercent ??= double.tryParse(discountController.text.trim());
-    } else {
-      manualDiscountAmount ??= double.tryParse(discountController.text.trim());
-    }
-
-    attendedByStaffId ??= selectedStaff?.id;
-    if (customerPhone != null &&
-        customerPhone != "" &&
-        customerPhone.trim().length == 10) {
-      customerPhone = "+91$customerPhone";
-    }
-    isLoading = true;
+  if (selectedCampaign == null &&
+      campaigns.isNotEmpty &&
+      cart!.items.isNotEmpty) {
+    voucherError = "Please select atleast one lucky coupon";
     update();
+    return false;
+  }
 
-    final url =
-        "$baseUrl/billing/cart/checkout?billingSessionId=${selectedSessionId}";
+  if (selectedStaff == null &&
+      staffList.isNotEmpty &&
+      cart!.items.isNotEmpty) {
+    couponError = "Please select the sales person";
+    update();
+    return false;
+  }
 
-    List<Map<String, dynamic>> splitPayment = [];
+  if (isPercentageDiscount) {
+    manualDiscountPercent ??=
+        double.tryParse(discountController.text.trim());
+  } else {
+    manualDiscountAmount ??=
+        double.tryParse(discountController.text.trim());
+  }
 
-    if (selectedPaymentMethods.length == 2) {
-      if (selectedPaymentMethods.contains("cash")) {
-        splitPayment.add({"type": "CASH", "amount": cashAmount});
-      }
+  attendedByStaffId ??= selectedStaff?.id;
 
-      if (selectedPaymentMethods.contains("card")) {
-        splitPayment.add({"type": "CARD", "amount": cardAmount});
-      }
+  if (customerPhone != null &&
+      customerPhone.isNotEmpty &&
+      customerPhone.trim().length == 10) {
+    customerPhone = "+91$customerPhone";
+  }
 
-      if (selectedPaymentMethods.contains("upi")) {
-        splitPayment.add({"type": "UPI", "amount": upiAmount});
-      }
+  isLoading = true;
+  update();
+
+  final url =
+      "$baseUrl/billing/cart/checkout?billingSessionId=$selectedSessionId";
+
+  List<Map<String, dynamic>> splitPayment = [];
+
+  if (selectedPaymentMethods.length == 2) {
+    if (selectedPaymentMethods.contains("cash")) {
+      splitPayment.add({
+        "type": "CASH",
+        "amount": cashAmount,
+      });
     }
 
-    final Map<String, dynamic> body = {
-      "paymentMethod": selectedPaymentMethods.length == 2
-          ? "SPLIT"
-          : selectedPaymentMethods.isNotEmpty
-          ? selectedPaymentMethods.first.toUpperCase()
-          : selectedPaymentMethod.toUpperCase(),
-      "customerName": customerName ?? "",
-      "customerPhone": customerPhone ?? "",
-      "customerEmail": customerEmail ?? "",
-      "customerAddress": customerAddress ?? "",
-    };
-
-    if (couponCode != null && couponCode.isNotEmpty) {
-      body["couponCode"] = couponCode;
+    if (selectedPaymentMethods.contains("card")) {
+      splitPayment.add({
+        "type": "CARD",
+        "amount": cardAmount,
+      });
     }
 
-    body["orderType"] = selectedOrderType;
-
-    if (addons.isNotEmpty) body['addons'] = addons;
-    if (campaignId != null && voucherCount != null && voucherCount > 0) {
-      body["campaignId"] = campaignId;
-      body["voucherCount"] = voucherCount;
+    if (selectedPaymentMethods.contains("upi")) {
+      splitPayment.add({
+        "type": "UPI",
+        "amount": upiAmount,
+      });
     }
+  }
 
-    if (manualDiscountAmount != null) {
-      body["manualDiscountAmount"] = manualDiscountAmount;
-    }
-    if (manualDiscountPercent != null) {
-      body["manualDiscountPercent"] = manualDiscountPercent;
-    }
+  final Map<String, dynamic> body = {
+    "paymentMethod": selectedPaymentMethods.length == 2
+        ? "SPLIT"
+        : selectedPaymentMethods.isNotEmpty
+            ? selectedPaymentMethods.first.toUpperCase()
+            : selectedPaymentMethod.toUpperCase(),
+    "customerName": customerName ?? "",
+    "customerPhone": customerPhone ?? "",
+    "customerEmail": customerEmail ?? "",
+    "customerAddress": customerAddress ?? "",
+    "orderType": selectedOrderType,
+  };
 
-    if (attendedByStaffId != null) {
-      body["attendedByStaffId"] = attendedByStaffId;
-    }
+  if (couponCode != null && couponCode.isNotEmpty) {
+    body["couponCode"] = couponCode;
+  }
 
-    if (splitPayment.isNotEmpty) {
-      body["splitPayment"] = splitPayment;
-    }
+  if (targetBranchId != null) {
+    body["targetBranchId"] = targetBranchId;
+  }
 
-    if (selectedPaymentMethods.length == 2) {
-      if (totalPaid != (cart?.grandFinalTotal ?? 0)) {
-        voucherError = "Split payment total must equal bill amount";
-        isLoading = false;
-        update();
-        return false;
-      }
-    }
-    final response = await http.post(
-      Uri.parse(url),
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer $accessToken",
-      },
-      body: jsonEncode(body),
-    );
+  if (addons.isNotEmpty) {
+    body["addons"] = addons;
+  }
 
-    if (response.statusCode == 201) {
-      final data = jsonDecode(response.body);
-      if (data["returnOnly"] ?? false) {
-      } else {
-        CheckoutData printModel = CheckoutData.fromJson(data);
-        PrinterController pctrl = Get.find();
-        pctrl.printReceipt(printModel);
-        Get.dialog(OrderCompleteDialog(data: printModel));
-      }
-      clearAllTextControllers();
-      clearVoucherSelection();
-      clearPaymentData();
-      selectedStaff = null;
-      discountController.clear();
-      getSession(isFirst: true);
-      isLoading = false;
-      addons.clear();
-      update();
+  if (campaignId != null &&
+      voucherCount != null &&
+      voucherCount > 0) {
+    body["campaignId"] = campaignId;
+    body["voucherCount"] = voucherCount;
+  }
 
-      return true;
-    }
+  if (manualDiscountAmount != null) {
+    body["manualDiscountAmount"] = manualDiscountAmount;
+  }
 
+  if (manualDiscountPercent != null) {
+    body["manualDiscountPercent"] = manualDiscountPercent;
+  }
+
+  if (attendedByStaffId != null) {
+    body["attendedByStaffId"] = attendedByStaffId;
+  }
+
+  if (splitPayment.isNotEmpty) {
+    body["splitPayment"] = splitPayment;
+  }
+
+  if (selectedPaymentMethods.length == 2 &&
+      totalPaid != (cart?.grandFinalTotal ?? 0)) {
+    voucherError = "Split payment total must equal bill amount";
+    isLoading = false;
+    update();
+    return false;
+  }
+
+  debugPrint("Checkout Request:");
+  debugPrint(jsonEncode(body));
+
+  final response = await http.post(
+    Uri.parse(url),
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer $accessToken",
+    },
+    body: jsonEncode(body),
+  );
+  debugPrint("Status Code: ${response.statusCode}");
+debugPrint("Response Body: ${response.body}");
+
+  if (response.statusCode == 201) {
     final data = jsonDecode(response.body);
 
-    String errorMessage = "";
+    if (!(data["returnOnly"] ?? false)) {
+      CheckoutData printModel = CheckoutData.fromJson(data);
 
-    if (data is Map) {
-      errorMessage = data["message"] ?? data["error"] ?? "";
+      PrinterController pctrl = Get.find();
+      pctrl.printReceipt(printModel);
+
+      Get.dialog(OrderCompleteDialog(data: printModel));
     }
 
-    if (errorMessage.toLowerCase().contains("coupon")) {
-      couponError = errorMessage;
-      voucherError = null;
-    } else {
-      voucherError = errorMessage.isNotEmpty
-          ? errorMessage
-          : "Something went wrong";
-      couponError = null;
-    }
+    clearAllTextControllers();
+    clearVoucherSelection();
+    clearPaymentData();
+
+    selectedStaff = null;
+    selectedBranchId = null;
+
+    discountController.clear();
+    addons.clear();
+
+    getSession(isFirst: true);
 
     isLoading = false;
     update();
 
-    return false;
+    return true;
   }
+
+  final data = jsonDecode(response.body);
+
+String errorMessage = "";
+
+if (data is Map) {
+  final message = data["message"];
+
+  if (message is List) {
+    errorMessage = message.join("\n");
+  } else if (message != null) {
+    errorMessage = message.toString();
+  } else if (data["error"] != null) {
+    errorMessage = data["error"].toString();
+  }
+}
+
+  if (errorMessage.toLowerCase().contains("coupon")) {
+    couponError = errorMessage;
+    voucherError = null;
+  } else {
+    voucherError = errorMessage.isNotEmpty
+        ? errorMessage
+        : "Something went wrong";
+    couponError = null;
+  }
+
+  isLoading = false;
+  update();
+
+  return false;
+}
 
   Future<void> updateCartItemQuantity(int variantId, int quantity) async {
     if (isUpdatingQty) return;
@@ -687,6 +734,39 @@ class AddProductController extends GetxController {
     addons.clear();
     update();
   }
+
+
+  Future<void> fetchBranches() async {
+  try {
+    final response = await http.get(
+      Uri.parse("$baseUrl/branches"),
+      headers: {
+        "Authorization": "Bearer $accessToken",
+        "Content-Type": "application/json",
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final List data = jsonDecode(response.body);
+
+      branches = data
+          .map((e) => BranchModel.fromJson(e))
+          .toList();
+
+      debugPrint("Branches Loaded: ${branches.length}");
+
+      for (final b in branches) {
+        debugPrint("${b.name} - ${b.isB2BBranch}");
+      }
+    } else {
+      branches = [];
+    }
+
+    update();
+  } catch (e) {
+    debugPrint("fetchBranches Error: $e");
+  }
+}
 }
 
 // ── ADDON MODEL ────────────────────────────────────────────────────────────────

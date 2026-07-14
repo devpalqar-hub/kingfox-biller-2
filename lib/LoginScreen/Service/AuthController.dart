@@ -16,6 +16,7 @@ class AuthController extends GetxController {
 
   String userId = "";
   String userName = "";
+  String userRole = "";
 
   @override
   void onInit() {
@@ -24,10 +25,10 @@ class AuthController extends GetxController {
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
-        final prefs =
-            await SharedPreferences.getInstance(); // ✅ inside callback
+        final prefs = await SharedPreferences.getInstance();
         userId = prefs.getString("userId") ?? "";
         userName = prefs.getString("userName") ?? "";
+        userRole = prefs.getString("userRole") ?? "";
         update();
 
         if (!_loginCheckCompleted) {
@@ -35,7 +36,7 @@ class AuthController extends GetxController {
           _loginCheckCompleted = true;
         }
       } catch (e, stack) {
-        debugPrint("onInit error: $e\n$stack"); // ✅ shows real error
+        debugPrint("onInit error: $e\n$stack");
       }
     });
   }
@@ -79,23 +80,25 @@ class AuthController extends GetxController {
         userName = data["user"]["name"] ?? "";
 
         final roleRaw = data["user"]["role"];
-        final role = (roleRaw ?? '').toString().trim().toLowerCase();
+        userRole = (roleRaw ?? '').toString().trim().toLowerCase();
 
         final prefs = await SharedPreferences.getInstance();
 
-        if (role == "cashier") {
+        if (userRole == "cashier" || userRole == "manager") {
           accessToken = data["access_token"];
+
           await prefs.setString("accessToken", accessToken!);
           await prefs.setString("userId", userId);
           await prefs.setString("userName", userName);
-          await prefs.setString("userRole", role);
+          await prefs.setString("userRole", userRole);
 
           Get.offAll(() => Dashboardscreen());
         } else {
           accessToken = null;
           await prefs.remove("accessToken");
           await prefs.remove("userRole");
-          loginError = "Please login as cashier";
+
+          loginError = "Only Cashier or Manager can login";
         }
       } else {
         String errorMessage = "Login failed";
@@ -119,41 +122,45 @@ class AuthController extends GetxController {
     }
   }
 
-  Future<void> checkLogin() async {
-    try {
-      // ✅ try/catch added
-      final prefs = await SharedPreferences.getInstance();
-      final savedToken = prefs.getString("accessToken") ?? '';
-      final savedRole = (prefs.getString("userRole") ?? '')
-          .trim()
-          .toLowerCase();
+ Future<void> checkLogin() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
 
-      if (savedToken.isEmpty || savedRole != 'cashier') {
-        await prefs.remove("accessToken");
-        await prefs.remove("userRole");
-        Get.offAll(() => LoginScreen());
-        return;
-      }
+    final savedToken = prefs.getString("accessToken") ?? '';
+    userRole = (prefs.getString("userRole") ?? '')
+        .trim()
+        .toLowerCase();
 
-      accessToken = savedToken;
-
-      final response = await http
-          .get(
-            Uri.parse("$baseUrl/auth/profile"),
-            headers: {"Authorization": "Bearer $accessToken"},
-          )
-          .timeout(const Duration(seconds: 15)); // ✅ prevent hanging
-
-      if (response.statusCode == 200) {
-        Get.offAll(() => Dashboardscreen());
-      } else {
-        await logout();
-      }
-    } catch (e, stack) {
-      debugPrint("checkLogin error: $e\n$stack"); // ✅ shows real error
-      Get.offAll(() => LoginScreen()); // ✅ fail safely
+    if (savedToken.isEmpty ||
+        (userRole != 'cashier' && userRole != 'manager')) {
+      await prefs.remove("accessToken");
+      await prefs.remove("userRole");
+      Get.offAll(() => LoginScreen());
+      return;
     }
+
+    accessToken = savedToken;
+    update();
+
+    final response = await http
+        .get(
+          Uri.parse("$baseUrl/auth/profile"),
+          headers: {
+            "Authorization": "Bearer $accessToken",
+          },
+        )
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode == 200) {
+      Get.offAll(() => Dashboardscreen());
+    } else {
+      await logout();
+    }
+  } catch (e, stack) {
+    debugPrint("checkLogin error: $e\n$stack");
+    Get.offAll(() => LoginScreen());
   }
+}
 
   Future<void> logout() async {
     try {

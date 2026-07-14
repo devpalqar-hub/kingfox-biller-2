@@ -101,6 +101,9 @@ class BillSummaryCard extends StatelessWidget {
                         campaignId: ctrl.selectedCampaign?.id,
                         voucherCount:
                             int.tryParse(ctrl.voucherCountController.text) ?? 0,
+                        targetBranchId: ctrl.selectedOrderType == "B2B"
+                            ? ctrl.selectedBranchId
+                            : null,
                       );
 
                       if (ok) {
