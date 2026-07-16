@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
-import 'package:kinfox_biller/LoginScreen/Service/AuthController.dart';
+
 import 'package:kinfox_biller/SalesScreen/Service/AddProductController.dart';
+
 
 class PaymentMethodCard extends StatelessWidget {
   const PaymentMethodCard({super.key});
@@ -11,9 +12,14 @@ class PaymentMethodCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GetBuilder<AddProductController>(
       builder: (ctrl) {
-        final auth = Get.find<AuthController>();
-        final bool isManager = auth.userRole == "manager";
+     final bool isWarehouseBranch =
+    (ctrl.branch.type).trim().toUpperCase() == "WAREHOUSE";
 
+      debugPrint("================================");
+      debugPrint("Branch Name: ${ctrl.branch.name}");
+      debugPrint("Branch Type: ${ctrl.branch.type}");
+      debugPrint("Is Warehouse Branch: $isWarehouseBranch");
+      debugPrint("================================");
         return Container(
           padding: EdgeInsets.all(10.w),
           decoration: BoxDecoration(
@@ -24,7 +30,7 @@ class PaymentMethodCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (isManager) ...[
+              if (isWarehouseBranch) ...[
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -54,8 +60,7 @@ class PaymentMethodCard extends StatelessWidget {
                 SizedBox(height: 8.h),
               ],
 
-              /// Cashier - only Offline
-              if (!isManager) ...[
+              if (!isWarehouseBranch) ...[
                 Row(
                   children: [
                     Text(
@@ -88,7 +93,7 @@ class PaymentMethodCard extends StatelessWidget {
                 SizedBox(height: 8.h),
               ],
 
-              if (isManager && ctrl.selectedOrderType == "B2B") ...[
+              if (isWarehouseBranch && ctrl.selectedOrderType == "B2B") ...[
                 SizedBox(
                   height: 36.h,
                   child: DropdownButtonFormField<int>(

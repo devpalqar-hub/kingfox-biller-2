@@ -1,4 +1,4 @@
-import 'dart:convert';
+import  'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
@@ -16,19 +16,20 @@ class AuthController extends GetxController {
 
   String userId = "";
   String userName = "";
-  String userRole = "";
+
 
   @override
   void onInit() {
-    // ✅ NOT async
+   
     super.onInit();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
-        final prefs = await SharedPreferences.getInstance();
+        final prefs =
+            await SharedPreferences.getInstance(); 
         userId = prefs.getString("userId") ?? "";
         userName = prefs.getString("userName") ?? "";
-        userRole = prefs.getString("userRole") ?? "";
+
         update();
 
         if (!_loginCheckCompleted) {
@@ -71,7 +72,7 @@ class AuthController extends GetxController {
               "password": trimmedPassword,
             }),
           )
-          .timeout(const Duration(seconds: 15)); // ✅ prevent hanging on Windows
+          .timeout(const Duration(seconds: 15));
 
       final dynamic data = jsonDecode(response.body);
 
@@ -80,25 +81,25 @@ class AuthController extends GetxController {
         userName = data["user"]["name"] ?? "";
 
         final roleRaw = data["user"]["role"];
-        userRole = (roleRaw ?? '').toString().trim().toLowerCase();
+        final role = (roleRaw ?? '').toString().trim().toLowerCase();
 
         final prefs = await SharedPreferences.getInstance();
 
-        if (userRole == "cashier" || userRole == "manager") {
+        if (role == "cashier") {
           accessToken = data["access_token"];
 
           await prefs.setString("accessToken", accessToken!);
           await prefs.setString("userId", userId);
           await prefs.setString("userName", userName);
-          await prefs.setString("userRole", userRole);
+          await prefs.setString("userRole", role);
 
           Get.offAll(() => Dashboardscreen());
         } else {
           accessToken = null;
           await prefs.remove("accessToken");
           await prefs.remove("userRole");
+          loginError = "Please login as cashier";
 
-          loginError = "Only Cashier or Manager can login";
         }
       } else {
         String errorMessage = "Login failed";
@@ -122,57 +123,78 @@ class AuthController extends GetxController {
     }
   }
 
- Future<void> checkLogin() async {
+  Future<void> checkLogin() async {
+    try {
+      // ✅ try/catch added
+      final prefs = await SharedPreferences.getInstance();
+      final savedToken = prefs.getString("accessToken") ?? '';
+      final savedRole = (prefs.getString("userRole") ?? '')
+          .trim()
+          .toLowerCase();
+
+      if (savedToken.isEmpty || savedRole != 'cashier') {
+        await prefs.remove("accessToken");
+        await prefs.remove("userRole");
+        Get.offAll(() => LoginScreen());
+        return;
+      }
+
+      accessToken = savedToken;
+
+
+
+
+      final response = await http
+          .get(
+            Uri.parse("$baseUrl/auth/profile"),
+            headers: {"Authorization": "Bearer $accessToken"},
+          )
+          .timeout(const Duration(seconds: 15)); // ✅ prevent hanging
+
+
+      if (response.statusCode == 200) {
+        debugPrint("Login Token: $accessToken");
+        Get.offAll(() => Dashboardscreen());
+      } else {
+        await logout();
+      }
+    } catch (e, stack) {
+      debugPrint("checkLogin error: $e\n$stack"); // ✅ shows real error
+      Get.offAll(() => LoginScreen()); // ✅ fail safely
+
+
+
+
+
+
+
+
+    }
+
+
+
+  }
+
+Future<void> logout() async {
   try {
     final prefs = await SharedPreferences.getInstance();
 
-    final savedToken = prefs.getString("accessToken") ?? '';
-    userRole = (prefs.getString("userRole") ?? '')
-        .trim()
-        .toLowerCase();
+    await prefs.clear();
 
-    if (savedToken.isEmpty ||
-        (userRole != 'cashier' && userRole != 'manager')) {
-      await prefs.remove("accessToken");
-      await prefs.remove("userRole");
-      Get.offAll(() => LoginScreen());
-      return;
-    }
+    accessToken = null;
 
-    accessToken = savedToken;
-    update();
+    // Delete all existing controllers
+    Get.deleteAll(force: true);
 
-    final response = await http
-        .get(
-          Uri.parse("$baseUrl/auth/profile"),
-          headers: {
-            "Authorization": "Bearer $accessToken",
-          },
-        )
-        .timeout(const Duration(seconds: 15));
+    // Recreate AuthController
+    Get.put(AuthController(), permanent: true);
 
-    if (response.statusCode == 200) {
-      Get.offAll(() => Dashboardscreen());
-    } else {
-      await logout();
-    }
-  } catch (e, stack) {
-    debugPrint("checkLogin error: $e\n$stack");
-    Get.offAll(() => LoginScreen());
+    // Navigate to Login
+    Get.offAll(() => const LoginScreen());
+  } catch (e) {
+    debugPrint("Logout error: $e");
   }
 }
-
-  Future<void> logout() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.clear();
-      accessToken = null;
-      Get.deleteAll();
-      Get.offAll(() => LoginScreen());
-    } catch (e) {
-      debugPrint("Logout error: $e");
-    }
-  }
 
   void handleUnauthorized(int statusCode) {
     if (statusCode == 401) {

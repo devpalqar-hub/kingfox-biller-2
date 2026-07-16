@@ -52,6 +52,7 @@ class _BarcodePrinterDialogState extends State<BarcodePrinterDialog> {
           builder: (ctrl) => _Shell(
             ctrl: ctrl,
             job: _resolvedJob,
+
             count: _count,
             printing: _printing,
             onCountChanged: (v) => setState(() => _count = v),
@@ -444,72 +445,104 @@ class _LabelSizeGrid extends StatelessWidget {
 }
 
 // ── Count selector ────────────────────────────────────────────────────────────
-class _CountSelector extends StatelessWidget {
+class _CountSelector extends StatefulWidget {
   final int count;
   final ValueChanged<int> onChanged;
+
   const _CountSelector({required this.count, required this.onChanged});
+
+  @override
+  State<_CountSelector> createState() => _CountSelectorState();
+}
+
+class _CountSelectorState extends State<_CountSelector> {
+  late TextEditingController controller;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = TextEditingController(text: widget.count.toString());
+  }
+
+  @override
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        // Stepper
-        Container(
-          decoration: BoxDecoration(
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-            borderRadius: BorderRadius.circular(8.r),
-          ),
-          child: Row(
-            children: [
-              _StepBtn(
-                icon: Icons.remove,
-                onTap: () {
-                  if (count > 1) onChanged(count - 1);
-                },
+        /// TextField instead of +/- buttons
+        SizedBox(
+          width: 80.w,
+          height: 38.h,
+          child: TextField(
+            controller: controller,
+            textAlign: TextAlign.center,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700),
+            decoration: InputDecoration(
+              hintText: "Qty",
+              isDense: true,
+              contentPadding: EdgeInsets.symmetric(vertical: 10.h),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8.r),
               ),
-              Container(
-                width: 48.w,
-                alignment: Alignment.center,
-                child: Text(
-                  '$count',
-                  style: TextStyle(
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF0F172A),
-                  ),
-                ),
-              ),
-              _StepBtn(icon: Icons.add, onTap: () => onChanged(count + 1)),
-            ],
+            ),
+
+            // Remove onChanged
+            onEditingComplete: () {
+              final n = int.tryParse(controller.text);
+              if (n != null && n > 0) {
+                widget.onChanged(n);
+              }
+              FocusScope.of(context).unfocus();
+            },
+
+            onSubmitted: (value) {
+              final n = int.tryParse(value);
+              if (n != null && n > 0) {
+                widget.onChanged(n);
+              }
+            },
           ),
         ),
+
         SizedBox(width: 12.w),
-        // Quick presets
-        ...([10, 25, 50, 100]).map(
+
+        /// Quick presets
+        ...[10, 25, 50, 100].map(
           (v) => Padding(
             padding: EdgeInsets.only(right: 6.w),
             child: GestureDetector(
-              onTap: () => onChanged(v),
+              onTap: () {
+                controller.text = "$v";
+                widget.onChanged(v);
+              },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 120),
                 padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
                 decoration: BoxDecoration(
-                  color: count == v
-                      ? const Color(0xFF6366F1).withOpacity(0.09)
+                  color: widget.count == v
+                      ? const Color(0xFF6366F1).withOpacity(.09)
                       : const Color(0xFFF1F5F9),
                   borderRadius: BorderRadius.circular(6.r),
                   border: Border.all(
-                    color: count == v
-                        ? const Color(0xFF6366F1).withOpacity(0.35)
+                    color: widget.count == v
+                        ? const Color(0xFF6366F1).withOpacity(.35)
                         : Colors.transparent,
                   ),
                 ),
                 child: Text(
-                  '$v',
+                  "$v",
                   style: TextStyle(
                     fontSize: 10.sp,
                     fontWeight: FontWeight.w600,
-                    color: count == v
+                    color: widget.count == v
                         ? const Color(0xFF6366F1)
                         : const Color(0xFF64748B),
                   ),

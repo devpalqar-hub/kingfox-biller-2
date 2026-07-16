@@ -14,6 +14,8 @@ import 'package:kinfox_biller/SalesScreen/Service/PrinterController.dart';
 import 'package:kinfox_biller/main.dart';
 import 'package:flutter/material.dart';
 
+import '../Model/LuckyDrawModel.dart' as md;
+
 class AddProductController extends GetxController {
   bool isLoading = false;
   bool isUpdatingQty = false;
@@ -38,6 +40,7 @@ class AddProductController extends GetxController {
   int? selectedSessionId = null;
 
   List items = [];
+  md.BranchModel branch = md.BranchModel.fromJson({});
   List<ProductVariantModel> searchProductsList = [];
 
   String appliedCoupon = "";
@@ -83,7 +86,7 @@ class AddProductController extends GetxController {
     isPercentageDiscount = value;
     update();
   }
-
+  final PrinterController printerCtrl = Get.put(PrinterController());
   final TextEditingController cashAmountController = TextEditingController();
 
   final TextEditingController cardAmountController = TextEditingController();
@@ -253,17 +256,23 @@ class AddProductController extends GetxController {
     }
   }
 
-  @override
-  void onInit() {
-    super.onInit();
-    voucherCountController.text = "1";
-    fetchCampaigns();
-    fetchStaff();
-    fetchBranches();
-    getCart();
-    getSession(isFirst: true);
-  }
+ @override
+void onInit() {
+  super.onInit();
 
+  debugPrint("=========== AddProductController onInit ===========");
+  debugPrint("Current Token: $accessToken");
+
+  fetchProfileDetails();
+
+  voucherCountController.text = "1";
+
+  fetchCampaigns();
+  fetchStaff();
+  fetchBranches();
+  getCart();
+  getSession(isFirst: true);
+}
   @override
   void onClose() {
     disposeAllTextControllers();
@@ -766,6 +775,47 @@ if (data is Map) {
   } catch (e) {
     debugPrint("fetchBranches Error: $e");
   }
+}
+
+
+Future<void> fetchProfileDetails() async {
+  final response = await http.get(
+    Uri.parse("$baseUrl/users/profile/"),
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer $accessToken",
+    },
+  );
+
+  debugPrint("========== PROFILE API ==========");
+  debugPrint("Status Code: ${response.statusCode}");
+  debugPrint("Raw Response:");
+  debugPrint(response.body);
+
+  if (response.statusCode == 200) {
+    final data = jsonDecode(response.body);
+
+    debugPrint("Decoded Response:");
+    debugPrint(data.toString());
+
+    debugPrint("Branch JSON:");
+    debugPrint(data["branch"].toString());
+
+    branch = md.BranchModel.fromJson(data["branch"]);
+
+    debugPrint("Parsed Branch:");
+    debugPrint("ID: ${branch.id}");
+    debugPrint("Name: ${branch.name}");
+    debugPrint("Type: ${branch.type}");
+    debugPrint("isB2BBranch: ${branch.isB2BBranch}");
+
+    update();
+  } else {
+    debugPrint("Profile API Failed");
+    debugPrint(response.body);
+  }
+
+  debugPrint("=================================");
 }
 }
 
