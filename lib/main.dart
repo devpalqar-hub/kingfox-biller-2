@@ -6,8 +6,7 @@ import 'package:get/get.dart';
 import 'package:kinfox_biller/LoginScreen/Service/AuthController.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-
-String baseUrl = (false)
+String baseUrl = (true)
     ? "https://api.kingfox.palqar.cloud/v1"
     : "https://api.kingfoxclothing.com/v1";
 String? accessToken;
@@ -17,7 +16,7 @@ class MyHttpOverrides extends HttpOverrides {
   HttpClient createHttpClient(SecurityContext? context) {
     return super.createHttpClient(context)
       ..badCertificateCallback =
-          (X509Certificate cert, String host, int port) => true; 
+          (X509Certificate cert, String host, int port) => true;
   }
 }
 
