@@ -17,7 +17,6 @@ dependencies:
   http: ^1.6.0
   fluttertoast: ^9.0.0
   flutter_screenutil: ^5.9.3
-  mobile_scanner: ^7.2.0
   data_table_2: ^2.7.2
   intl: ^0.20.2
   flutter_thermal_printer: ^2.0.1

@@ -502,6 +502,13 @@ class _CountSelectorState extends State<_CountSelector> {
               }
               FocusScope.of(context).unfocus();
             },
+            onChanged: (value) {
+              final n = int.tryParse(controller.text);
+              if (n != null && n > 0) {
+                widget.onChanged(n);
+              }
+              FocusScope.of(context).unfocus();
+            },
 
             onSubmitted: (value) {
               final n = int.tryParse(value);

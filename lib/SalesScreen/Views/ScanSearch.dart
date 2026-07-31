@@ -30,22 +30,22 @@ class ScanSearch extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    GestureDetector(
-                      onTap: () async {
-                        final barcode = await Get.to(() => const ScanPage());
-                        if (barcode != null) {
-                          ctrl.scanAndAddProduct(barcode, 5);
-                        }
-                      },
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 12.w),
-                        child: Icon(
-                          Icons.qr_code_scanner,
-                          size: 19.sp,
-                          color: const Color(0xFF64748B),
-                        ),
-                      ),
-                    ),
+                    // GestureDetector(
+                    //   onTap: () async {
+                    //     final barcode = await Get.to(() => const ScanPage());
+                    //     if (barcode != null) {
+                    //       ctrl.scanAndAddProduct(barcode, 5);
+                    //     }
+                    //   },
+                    //   child: Padding(
+                    //     padding: EdgeInsets.symmetric(horizontal: 12.w),
+                    //     child: Icon(
+                    //       Icons.qr_code_scanner,
+                    //       size: 19.sp,
+                    //       color: const Color(0xFF64748B),
+                    //     ),
+                    //   ),
+                    // ),
                     Container(
                       width: 1,
                       height: 22.h,

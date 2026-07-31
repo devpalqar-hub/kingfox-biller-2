@@ -806,6 +806,210 @@ class PrinterController extends GetxController {
     }
   }
 
+  Future<void> printTransferReceipt(CheckoutData data) async {
+    if (!mockMode && !isConnected) {
+      openPrinterSettings();
+      _toast("Please connect printer");
+      return;
+    }
+
+    CapabilityProfile profile;
+
+    try {
+      profile = await CapabilityProfile.load(name: 'epson');
+    } catch (_) {
+      profile = await CapabilityProfile.load();
+    }
+
+    final generator = Generator(PaperSize.mm80, profile);
+
+    List<int> bytes = [];
+
+    final moneyFmt = NumberFormat('#,##0.00');
+    final dtFmt = DateFormat('dd MMM yyyy hh:mm a');
+
+    const normal = PosStyles();
+    const bold = PosStyles(bold: true);
+    const center = PosStyles(align: PosAlign.center);
+    const right = PosStyles(align: PosAlign.right);
+    const boldCenter = PosStyles(
+      align: PosAlign.center,
+      bold: true,
+      height: PosTextSize.size2,
+    );
+
+    //--------------------------------------------------
+    // Logo
+    //--------------------------------------------------
+
+    if (shopLogoPath != null) {
+      try {
+        Uint8List? raw;
+
+        if (shopLogoPath!.startsWith('assets/')) {
+          raw = await _loadAssetBytes(shopLogoPath!);
+        } else {
+          final file = File(shopLogoPath!);
+
+          if (await file.exists()) {
+            raw = await file.readAsBytes();
+          }
+        }
+
+        if (raw != null) {
+          final image = img.decodeImage(raw);
+
+          if (image != null) {
+            bytes += generator.imageRaster(
+              img.copyResize(img.grayscale(image), width: 120),
+              align: PosAlign.center,
+            );
+          }
+        }
+      } catch (_) {}
+    }
+
+    //--------------------------------------------------
+    // Company
+    //--------------------------------------------------
+
+    bytes += generator.text("KINGFOX CLOTHING PVT. LTD.", styles: boldCenter);
+
+    bytes += generator.text(
+      "INVENTORY TRANSFER",
+      styles: const PosStyles(align: PosAlign.center, bold: true),
+    );
+
+    bytes += generator.hr(ch: '=');
+
+    //--------------------------------------------------
+    // Transfer Details
+    //--------------------------------------------------
+
+    bytes += generator.row([
+      PosColumn(text: "Transfer No", width: 5),
+      PosColumn(text: data.invoiceNumber ?? "", width: 7, styles: right),
+    ]);
+
+    // bytes += generator.row([
+    //   PosColumn(text: "Transfer ID", width: 5),
+    //   // PosColumn(text: data.payments, width: 7, styles: right),
+    // ]);
+
+    bytes += generator.row([
+      PosColumn(text: "Date", width: 5),
+      PosColumn(
+        text: dtFmt.format(DateTime.parse(data.createdAt!)),
+        width: 7,
+        styles: right,
+      ),
+    ]);
+
+    // bytes += generator.row([
+    //   PosColumn(text: "From", width: 5),
+    //   PosColumn(text: transfer.fromBranch, width: 7, styles: right),
+    // ]);
+
+    // bytes += generator.row([
+    //   PosColumn(text: "To", width: 5),
+    //   PosColumn(text: transfer.toBranch, width: 7, styles: right),
+    // ]);
+
+    if (data.attendedByStaffName != null) {
+      bytes += generator.row([
+        PosColumn(text: "By", width: 5),
+        PosColumn(text: data.attendedByStaffName!, width: 7, styles: right),
+      ]);
+    }
+
+    bytes += generator.hr();
+
+    //--------------------------------------------------
+    // Header
+    //--------------------------------------------------
+
+    bytes += generator.row([
+      PosColumn(text: "Item", width: 9, styles: bold),
+      PosColumn(
+        text: "Qty",
+        width: 3,
+        styles: const PosStyles(bold: true, align: PosAlign.right),
+      ),
+    ]);
+
+    bytes += generator.hr();
+
+    //--------------------------------------------------
+    // Items
+    //--------------------------------------------------
+
+    int totalQty = 0;
+
+    for (final item in data.items) {
+      totalQty += item.quantity ?? 0;
+
+      final variant = [
+        item.color,
+        item.size,
+      ].where((e) => e != null && e.isNotEmpty).join(" / ");
+
+      bytes += generator.text(item.productName ?? '', styles: bold);
+
+      bytes += generator.row([
+        PosColumn(text: variant, width: 9),
+        PosColumn(text: "${item.quantity}", width: 3, styles: right),
+      ]);
+    }
+
+    bytes += generator.hr();
+
+    //--------------------------------------------------
+    // Summary
+    //--------------------------------------------------
+
+    bytes += generator.row([
+      PosColumn(text: "Total Products", width: 8, styles: bold),
+      PosColumn(text: "${data.items.length}", width: 4, styles: right),
+    ]);
+
+    bytes += generator.row([
+      PosColumn(text: "Total Quantity", width: 8, styles: bold),
+      PosColumn(text: "$totalQty", width: 4, styles: right),
+    ]);
+
+    bytes += generator.hr(ch: '=');
+
+    //--------------------------------------------------
+    // Signature
+    //--------------------------------------------------
+
+    bytes += generator.feed(1);
+
+    bytes += generator.text("Receiver Signature", styles: center);
+
+    bytes += generator.feed(3);
+
+    bytes += generator.text("_________________________", styles: center);
+
+    bytes += generator.feed(1);
+
+    bytes += generator.text("www.kingfoxclothing.com", styles: center);
+
+    bytes += generator.feed(3);
+
+    bytes += generator.cut();
+
+    if (!mockMode) {
+      if (Platform.isMacOS) {
+        await _printViaCups(bytes);
+      } else {
+        await _plugin.printData(selectedPrinter!, bytes, longData: true);
+      }
+
+      _toast("Transfer receipt printed");
+    }
+  }
+
   // ── CUPS (macOS) ───────────────────────────────────────────────────────────
   String _cupsSafeName(String? name) {
     if (name == null || name.isEmpty) return '';

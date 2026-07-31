@@ -343,7 +343,11 @@ class OrderCompleteDialog extends StatelessWidget {
             label: 'Print',
             onTap: () {
               PrinterController pctrl = Get.find();
-              pctrl.printReceipt(data);
+              if (data.orderType != "B2B") {
+                pctrl.printReceipt(data);
+              } else {
+                pctrl.printTransferReceipt(data);
+              }
             },
           ),
           SizedBox(width: 8.w),
