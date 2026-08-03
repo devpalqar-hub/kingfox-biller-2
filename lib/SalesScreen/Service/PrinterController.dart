@@ -1523,7 +1523,7 @@ class PrinterController extends GetxController {
     pw.Widget branchBlock(String label, TransferBranch b) => pw.Expanded(
       child: pw.Container(
         padding: const pw.EdgeInsets.all(8),
-        decoration: pw.BoxDecoration(border: pw.Border.all(width: 0.5)),
+        //   decoration: pw.BoxDecoration(border: pw.Border.all(width: 0.5)),
         child: pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
@@ -1537,8 +1537,8 @@ class PrinterController extends GetxController {
             ),
             pw.SizedBox(height: 2),
             pw.Text(
-              b.name ?? '-',
-              style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+              "KINGFOX CLOTHING PVT. LTD. (" + (b.name ?? '-') + ")",
+              style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
             ),
             if ((b.address ?? '').isNotEmpty) ...[
               pw.SizedBox(height: 2),
@@ -1546,7 +1546,10 @@ class PrinterController extends GetxController {
             ],
             if ((b.phone ?? '').isNotEmpty) ...[
               pw.SizedBox(height: 2),
-              pw.Text('Ph: ${b.phone}', style: const pw.TextStyle(fontSize: 9)),
+              pw.Text(
+                'Ph: ${b.phone} ,GSTIN -${branch.gstin}',
+                style: const pw.TextStyle(fontSize: 9),
+              ),
             ],
           ],
         ),
