@@ -1290,7 +1290,9 @@ class PrinterController extends GetxController {
     bytes += generator.row([
       PosColumn(text: "Date", width: 5),
       PosColumn(
-        text: dtFmt.format(DateTime.parse(data.createdAt!)),
+        text: dtFmt.format(
+          DateTime.parse(data.payments.first.paidAt!).toLocal(),
+        ),
         width: 7,
         styles: right,
       ),
@@ -1397,6 +1399,11 @@ class PrinterController extends GetxController {
       PosColumn(text: "$totalQty", width: 4, styles: right),
     ]);
 
+    bytes += generator.row([
+      PosColumn(text: "Total Amount", width: 8, styles: bold),
+      PosColumn(text: "${data.grandFinalTotal}", width: 4, styles: right),
+    ]);
+
     bytes += generator.hr(ch: '=');
 
     //--------------------------------------------------
@@ -1489,7 +1496,7 @@ class PrinterController extends GetxController {
             ),
             // ── Explicit "Transfer Receipt" title ─────────────────────────
             pw.Text(
-              "TRANSFER RECEIPT${isB2B ? ' (B2B)' : ''}",
+              "TRANSFER RECEIPT",
               style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
             ),
             pw.SizedBox(height: 8),
@@ -1514,7 +1521,9 @@ class PrinterController extends GetxController {
               pw.Text("Date", style: const pw.TextStyle(fontSize: 10)),
               pw.Text(
                 data.createdAt != null
-                    ? dtFmt.format(DateTime.parse(data.createdAt!))
+                    ? dtFmt.format(
+                        DateTime.parse(data.payments.first.paidAt!).toLocal(),
+                      )
                     : '',
                 style: const pw.TextStyle(fontSize: 10),
               ),
@@ -1621,6 +1630,16 @@ class PrinterController extends GetxController {
                 style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
               ),
               pw.Text("$totalQty"),
+            ],
+          ),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text(
+                "Total Amount",
+                style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              ),
+              pw.Text("${data.grandFinalTotal}"),
             ],
           ),
           pw.Divider(thickness: 1.5),

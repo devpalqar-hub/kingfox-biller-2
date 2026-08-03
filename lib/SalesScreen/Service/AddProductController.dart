@@ -581,7 +581,7 @@ class AddProductController extends GetxController {
 
         PrinterController pctrl = Get.find();
 
-        if (printModel.orderType != "B2B") {
+        if (selectedOrderType != "B2B") {
           pctrl.printReceipt(printModel);
         } else {
           pctrl.printTransferReceipt(printModel);
