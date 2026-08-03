@@ -1200,6 +1200,8 @@ class PrinterController extends GetxController {
       return;
     }
 
+    final isB2B = (data.orderType ?? '').toUpperCase() == 'B2B';
+
     CapabilityProfile profile;
 
     try {
@@ -1212,8 +1214,10 @@ class PrinterController extends GetxController {
 
     List<int> bytes = [];
 
+    final moneyFmt = NumberFormat('#,##0.00');
     final dtFmt = DateFormat('dd MMM yyyy hh:mm a');
 
+    const normal = PosStyles();
     const bold = PosStyles(bold: true);
     const center = PosStyles(align: PosAlign.center);
     const right = PosStyles(align: PosAlign.right);
@@ -1260,10 +1264,17 @@ class PrinterController extends GetxController {
 
     bytes += generator.text("KINGFOX CLOTHING PVT. LTD.", styles: boldCenter);
 
+    // ── Explicit "Transfer Receipt" title (was "INVENTORY TRANSFER") ────────
     bytes += generator.text(
-      "INVENTORY TRANSFER",
+      "TRANSFER RECEIPT",
       styles: const PosStyles(align: PosAlign.center, bold: true),
     );
+    if (isB2B) {
+      bytes += generator.text(
+        "(B2B)",
+        styles: const PosStyles(align: PosAlign.center, bold: false),
+      );
+    }
 
     bytes += generator.hr(ch: '=');
 
@@ -1276,11 +1287,6 @@ class PrinterController extends GetxController {
       PosColumn(text: data.invoiceNumber ?? "", width: 7, styles: right),
     ]);
 
-    // bytes += generator.row([
-    //   PosColumn(text: "Transfer ID", width: 5),
-    //   // PosColumn(text: data.payments, width: 7, styles: right),
-    // ]);
-
     bytes += generator.row([
       PosColumn(text: "Date", width: 5),
       PosColumn(
@@ -1289,16 +1295,6 @@ class PrinterController extends GetxController {
         styles: right,
       ),
     ]);
-
-    // bytes += generator.row([
-    //   PosColumn(text: "From", width: 5),
-    //   PosColumn(text: transfer.fromBranch, width: 7, styles: right),
-    // ]);
-
-    // bytes += generator.row([
-    //   PosColumn(text: "To", width: 5),
-    //   PosColumn(text: transfer.toBranch, width: 7, styles: right),
-    // ]);
 
     if (data.attendedByStaffName != null) {
       bytes += generator.row([
@@ -1310,46 +1306,85 @@ class PrinterController extends GetxController {
     bytes += generator.hr();
 
     //--------------------------------------------------
-    // Header
+    // Header — B2B shows price/amount columns, non-B2B keeps qty-only layout
     //--------------------------------------------------
 
-    bytes += generator.row([
-      PosColumn(text: "Item", width: 9, styles: bold),
-      PosColumn(
-        text: "Qty",
-        width: 3,
-        styles: const PosStyles(bold: true, align: PosAlign.right),
-      ),
-    ]);
-
-    bytes += generator.hr();
-
-    //--------------------------------------------------
-    // Items
-    //--------------------------------------------------
-
-    int totalQty = 0;
-
-    for (final item in data.items) {
-      totalQty += item.quantity ?? 0;
-
-      final variant = [
-        item.color,
-        item.size,
-      ].where((e) => e != null && e.isNotEmpty).join(" / ");
-
-      bytes += generator.text(item.productName ?? '', styles: bold);
-
+    if (isB2B) {
       bytes += generator.row([
-        PosColumn(text: variant, width: 9),
-        PosColumn(text: "${item.quantity}", width: 3, styles: right),
+        PosColumn(text: "Item", width: 5, styles: bold),
+        PosColumn(
+          text: "Price",
+          width: 3,
+          styles: const PosStyles(bold: true, align: PosAlign.right),
+        ),
+        PosColumn(
+          text: "Qty",
+          width: 2,
+          styles: const PosStyles(bold: true, align: PosAlign.center),
+        ),
+        PosColumn(
+          text: "Amount",
+          width: 2,
+          styles: const PosStyles(bold: true, align: PosAlign.right),
+        ),
+      ]);
+    } else {
+      bytes += generator.row([
+        PosColumn(text: "Item", width: 9, styles: bold),
+        PosColumn(
+          text: "Qty",
+          width: 3,
+          styles: const PosStyles(bold: true, align: PosAlign.right),
+        ),
       ]);
     }
 
     bytes += generator.hr();
 
     //--------------------------------------------------
-    // Summary
+    // Items — always listed individually, never collapsed/summed together
+    //--------------------------------------------------
+
+    int totalQty = 0; // e.g. item qty 2 + item qty 3 = 5
+
+    for (final item in data.items) {
+      final qty = item.quantity ?? 0;
+      totalQty += qty;
+
+      final variant = [
+        item.color,
+        item.size,
+      ].where((e) => e != null && e.isNotEmpty).join(" / ");
+
+      if (isB2B) {
+        final price = item.sellingPrice ?? item.costPrice ?? 0;
+        final amount = price * qty;
+        final nameLine = variant.isNotEmpty
+            ? '${item.productName ?? ''}  [$variant]'
+            : (item.productName ?? '');
+        bytes += generator.row([
+          PosColumn(text: nameLine, width: 5, styles: normal),
+          PosColumn(text: moneyFmt.format(price), width: 3, styles: right),
+          PosColumn(
+            text: "$qty",
+            width: 2,
+            styles: const PosStyles(align: PosAlign.center),
+          ),
+          PosColumn(text: moneyFmt.format(amount), width: 2, styles: right),
+        ]);
+      } else {
+        bytes += generator.text(item.productName ?? '', styles: bold);
+        bytes += generator.row([
+          PosColumn(text: variant, width: 9),
+          PosColumn(text: "$qty", width: 3, styles: right),
+        ]);
+      }
+    }
+
+    bytes += generator.hr();
+
+    //--------------------------------------------------
+    // Summary — B2B: no subtotal/GST/discount, just item + quantity counts
     //--------------------------------------------------
 
     bytes += generator.row([
@@ -1365,16 +1400,19 @@ class PrinterController extends GetxController {
     bytes += generator.hr(ch: '=');
 
     //--------------------------------------------------
-    // Signature
+    // Signatures — Sender & Receiver side by side
     //--------------------------------------------------
 
-    bytes += generator.feed(1);
+    bytes += generator.feed(2);
 
-    bytes += generator.text("Receiver Signature", styles: center);
-
-    bytes += generator.feed(3);
-
-    bytes += generator.text("_________________________", styles: center);
+    bytes += generator.row([
+      PosColumn(text: "_______________", width: 6, styles: center),
+      PosColumn(text: "_______________", width: 6, styles: center),
+    ]);
+    bytes += generator.row([
+      PosColumn(text: "Sender Signature", width: 6, styles: center),
+      PosColumn(text: "Receiver Signature", width: 6, styles: center),
+    ]);
 
     bytes += generator.feed(1);
 
@@ -1400,6 +1438,8 @@ class PrinterController extends GetxController {
   // ───────────────────────────────────────────────────────────────────────────
   Future<void> _printTransferReceiptA4(CheckoutData data) async {
     final dtFmt = DateFormat('dd MMM yyyy hh:mm a');
+    final moneyFmt = NumberFormat('#,##0.00');
+    final isB2B = (data.orderType ?? '').toUpperCase() == 'B2B';
 
     //--------------------------------------------------
     // Logo
@@ -1419,7 +1459,7 @@ class PrinterController extends GetxController {
     }
 
     //--------------------------------------------------
-    // Summary
+    // Summary — item count + summed quantity across all lines
     //--------------------------------------------------
     int totalQty = 0;
     for (final item in data.items) {
@@ -1447,8 +1487,9 @@ class PrinterController extends GetxController {
               "KINGFOX CLOTHING PVT. LTD.",
               style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
             ),
+            // ── Explicit "Transfer Receipt" title ─────────────────────────
             pw.Text(
-              "INVENTORY TRANSFER",
+              "TRANSFER RECEIPT${isB2B ? ' (B2B)' : ''}",
               style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
             ),
             pw.SizedBox(height: 8),
@@ -1492,33 +1533,75 @@ class PrinterController extends GetxController {
             ),
           pw.Divider(thickness: 1),
 
-          // Items
-          pw.Table.fromTextArray(
-            border: null,
-            headerStyle: pw.TextStyle(
-              fontWeight: pw.FontWeight.bold,
-              fontSize: 10,
+          // Items — B2B adds Price/Amount columns, no subtotal/GST/discount rows
+          if (isB2B)
+            pw.Table.fromTextArray(
+              border: null,
+              headerStyle: pw.TextStyle(
+                fontWeight: pw.FontWeight.bold,
+                fontSize: 10,
+              ),
+              cellStyle: const pw.TextStyle(fontSize: 9),
+              headerDecoration: const pw.BoxDecoration(
+                border: pw.Border(bottom: pw.BorderSide(width: 1)),
+              ),
+              cellAlignments: {
+                0: pw.Alignment.centerLeft,
+                1: pw.Alignment.centerRight,
+                2: pw.Alignment.center,
+                3: pw.Alignment.centerRight,
+              },
+              headers: ['Item', 'Price', 'Qty', 'Amount'],
+              data: data.items.map((item) {
+                final qty = item.quantity ?? 0;
+                final price = item.sellingPrice ?? item.costPrice ?? 0;
+                final amount = price * qty;
+                final variant = [
+                  item.color,
+                  item.size,
+                ].where((e) => e != null && e.isNotEmpty).join(" / ");
+                final nameLine = variant.isNotEmpty
+                    ? '${item.productName ?? ''}  [$variant]'
+                    : (item.productName ?? '');
+                return [
+                  nameLine,
+                  moneyFmt.format(price),
+                  "$qty",
+                  moneyFmt.format(amount),
+                ];
+              }).toList(),
+            )
+          else
+            pw.Table.fromTextArray(
+              border: null,
+              headerStyle: pw.TextStyle(
+                fontWeight: pw.FontWeight.bold,
+                fontSize: 10,
+              ),
+              cellStyle: const pw.TextStyle(fontSize: 9),
+              headerDecoration: const pw.BoxDecoration(
+                border: pw.Border(bottom: pw.BorderSide(width: 1)),
+              ),
+              cellAlignments: {
+                0: pw.Alignment.centerLeft,
+                1: pw.Alignment.centerLeft,
+                2: pw.Alignment.centerRight,
+              },
+              headers: ['Item', 'Variant', 'Qty'],
+              data: data.items.map((item) {
+                final variant = [
+                  item.color,
+                  item.size,
+                ].where((e) => e != null && e.isNotEmpty).join(" / ");
+                return [
+                  item.productName ?? '',
+                  variant,
+                  "${item.quantity ?? 0}",
+                ];
+              }).toList(),
             ),
-            cellStyle: const pw.TextStyle(fontSize: 9),
-            headerDecoration: const pw.BoxDecoration(
-              border: pw.Border(bottom: pw.BorderSide(width: 1)),
-            ),
-            cellAlignments: {
-              0: pw.Alignment.centerLeft,
-              1: pw.Alignment.centerLeft,
-              2: pw.Alignment.centerRight,
-            },
-            headers: ['Item', 'Variant', 'Qty'],
-            data: data.items.map((item) {
-              final variant = [
-                item.color,
-                item.size,
-              ].where((e) => e != null && e.isNotEmpty).join(" / ");
-              return [item.productName ?? '', variant, "${item.quantity ?? 0}"];
-            }).toList(),
-          ),
 
-          // Summary
+          // Summary — item count + combined quantity only
           pw.Divider(thickness: 1),
           pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
@@ -1542,12 +1625,38 @@ class PrinterController extends GetxController {
           ),
           pw.Divider(thickness: 1.5),
 
-          // Signature
-          pw.SizedBox(height: 30),
-          pw.Center(child: pw.Text("Receiver Signature")),
+          // Signatures — Sender & Receiver side by side
           pw.SizedBox(height: 40),
-          pw.Center(child: pw.Text("_________________________")),
-          pw.SizedBox(height: 8),
+          pw.Row(
+            children: [
+              pw.Expanded(
+                child: pw.Column(
+                  children: [
+                    pw.Text("_________________________"),
+                    pw.SizedBox(height: 4),
+                    pw.Text(
+                      "Sender Signature",
+                      style: const pw.TextStyle(fontSize: 10),
+                    ),
+                  ],
+                ),
+              ),
+              pw.SizedBox(width: 20),
+              pw.Expanded(
+                child: pw.Column(
+                  children: [
+                    pw.Text("_________________________"),
+                    pw.SizedBox(height: 4),
+                    pw.Text(
+                      "Receiver Signature",
+                      style: const pw.TextStyle(fontSize: 10),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          pw.SizedBox(height: 16),
           pw.Center(child: pw.Text("www.kingfoxclothing.com")),
         ],
       ),
@@ -1601,7 +1710,6 @@ class PrinterController extends GetxController {
     }
     log('[Printer] CUPS accepted job for $queueName');
   }
-
 
   // ── Asset loader ───────────────────────────────────────────────────────────
   Future<Uint8List> _loadAssetBytes(String path) async {
