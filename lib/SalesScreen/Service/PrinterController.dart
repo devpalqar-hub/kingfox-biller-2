@@ -12,24 +12,33 @@ import 'package:get/get_core/src/get_main.dart';
 import 'package:get/get_instance/get_instance.dart';
 import 'package:get/get_navigation/src/extension_navigation.dart';
 import 'package:get/get_state_manager/src/simple/get_controllers.dart';
-import 'package:get/get_utils/src/extensions/string_extensions.dart';
 import 'package:http/http.dart';
 import 'package:image/image.dart' as img;
 import 'package:intl/intl.dart';
-import 'package:kinfox_biller/Dashboard/Service/DashBoardController.dart';
 import 'package:kinfox_biller/LoginScreen/LognScreen.dart';
 import 'package:kinfox_biller/SalesScreen/Model/CheckoutModel.dart';
-import 'package:kinfox_biller/SalesScreen/Model/LuckyDrawModel.dart';
 import 'package:kinfox_biller/Dashboard/Models/BranchModel.dart' as md;
 import 'package:kinfox_biller/SalesScreen/Views/PrinterSettingView.dart';
 import 'package:kinfox_biller/main.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+// ── A4 / PDF printing support ──────────────────────────────────────────────
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart' hide Printer;
+import 'package:barcode/barcode.dart' as bc;
+
 const _kDeviceName = 'printer_device_name';
 const _kDeviceAddress = 'printer_device_address';
 const _kConnType = 'printer_conn_type'; // "BLE" | "USB"
 const _kMockMode = 'printer_mock_mode';
+const _kPrinterMode = 'printer_mode'; // "THERMAL" | "A4"
+
+/// Selects which physical output path receipts/transfers are rendered for.
+/// [thermal] keeps the existing ESC/POS byte-stream path unchanged.
+/// [a4] renders a PDF and hands it to the OS print dialog via `printing`.
+enum PrinterMode { thermal, a4 }
 
 class PrinterController extends GetxController {
   // ── Shop config (set before printing) ─────────────────────────────────────
@@ -56,6 +65,11 @@ class PrinterController extends GetxController {
   ConnectionType? savedConnectionType;
 
   bool get hasSavedDevice => savedDeviceAddress != null;
+
+  // ── A4 / PDF mode state ─────────────────────────────────────────────────────
+  PrinterMode printerMode = PrinterMode.thermal;
+
+  bool get isA4Mode => printerMode == PrinterMode.a4;
 
   final _plugin = FlutterThermalPrinter.instance;
 
@@ -115,6 +129,11 @@ class PrinterController extends GetxController {
     final ct = p.getString(_kConnType);
     savedConnectionType = ct == 'USB' ? ConnectionType.USB : ConnectionType.BLE;
     mockMode = p.getBool(_kMockMode) ?? false;
+
+    // ── A4 mode restore ────────────────────────────────────────────────────
+    final modeStr = p.getString(_kPrinterMode);
+    printerMode = modeStr == 'A4' ? PrinterMode.a4 : PrinterMode.thermal;
+
     update();
   }
 
@@ -303,6 +322,21 @@ class PrinterController extends GetxController {
     update();
   }
 
+  // ── Printer output mode (Thermal vs A4) ────────────────────────────────────
+  /// Switches between thermal (ESC/POS) and A4 (PDF via system print dialog)
+  /// output. Call this from the printer-settings UI, e.g.:
+  ///   Get.find<PrinterController>().setPrinterMode(PrinterMode.a4);
+  Future<void> setPrinterMode(PrinterMode mode) async {
+    printerMode = mode;
+    final p = await SharedPreferences.getInstance();
+    await p.setString(_kPrinterMode, mode == PrinterMode.a4 ? 'A4' : 'THERMAL');
+    update();
+  }
+
+  Future<void> toggleA4Mode() async {
+    await setPrinterMode(isA4Mode ? PrinterMode.thermal : PrinterMode.a4);
+  }
+
   // ── Helpers ────────────────────────────────────────────────────────────────
   String connectionLabel(Printer printer) =>
       printer.connectionType == ConnectionType.USB ? 'USB' : 'BLE';
@@ -318,6 +352,12 @@ class PrinterController extends GetxController {
   // PRINT RECEIPT
   // ───────────────────────────────────────────────────────────────────────────
   Future<void> printReceipt(CheckoutData data) async {
+    // ── Route to A4/PDF path when selected — thermal path below is untouched.
+    if (isA4Mode) {
+      await _printReceiptA4(data);
+      return;
+    }
+
     if (!mockMode && !isConnected) {
       openPrinterSettings();
       _toast('Please connect a printer first');
@@ -457,7 +497,7 @@ class PrinterController extends GetxController {
 
     labelValueRow('Invoice#', inv, bold: true);
     if (data.payments.isNotEmpty) {
-      int invoiceID = int.parse(data!.payments.first.invoiceID ?? "0") + 881;
+      int invoiceID = int.parse(data.payments.first.invoiceID ?? "0") + 881;
 
       labelValueRow('Bill No#', invoiceID.toString(), bold: true);
     }
@@ -806,7 +846,354 @@ class PrinterController extends GetxController {
     }
   }
 
+  // ───────────────────────────────────────────────────────────────────────────
+  // PRINT RECEIPT — A4 / PDF path (mirrors printReceipt's layout & sections)
+  // ───────────────────────────────────────────────────────────────────────────
+  Future<void> _printReceiptA4(CheckoutData data) async {
+    final moneyFmt = NumberFormat('#,##0.00');
+    final dtFmt = DateFormat('dd MMM yyyy  hh:mm a');
+
+    // ── 1. Shop logo ─────────────────────────────────────────────────────
+    pw.MemoryImage? logo;
+    if (shopLogoPath != null) {
+      try {
+        Uint8List? rawBytes;
+        if (shopLogoPath!.startsWith('assets/')) {
+          rawBytes = await _loadAssetBytes(shopLogoPath!);
+        } else {
+          final f = File(shopLogoPath!);
+          if (await f.exists()) rawBytes = await f.readAsBytes();
+        }
+        if (rawBytes != null) logo = pw.MemoryImage(rawBytes);
+      } catch (e) {
+        log('[Printer/A4] Logo load failed: $e');
+      }
+    }
+
+    // ── 5. Invoice # & date ──────────────────────────────────────────────
+    final inv = data.invoiceNumber ?? '-';
+    final firstPay = data.payments.isNotEmpty ? data.payments.first : null;
+    final dateStr = firstPay?.paidAt != null
+        ? dtFmt.format(
+            (DateTime.tryParse(firstPay!.paidAt!) ?? DateTime.now()).toLocal(),
+          )
+        : dtFmt.format(DateTime.now());
+
+    int? invoiceID;
+    if (data.payments.isNotEmpty) {
+      invoiceID = int.parse(data.payments.first.invoiceID ?? "0") + 881;
+    }
+
+    // ── Savings total (same calc as thermal path) ───────────────────────
+    double totalSaved = 0;
+    for (final item in data.items) {
+      final qty = item.quantity ?? 1;
+      final mrp = item.costPrice;
+      final sp = item.sellingPrice;
+      if (mrp != null && sp != null && mrp > sp) {
+        totalSaved += (mrp - sp) * qty;
+      }
+    }
+
+    pw.Widget lv(String label, String value, {bool bold = false}) => pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(vertical: 2),
+      child: pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        children: [
+          pw.Text(
+            label,
+            style: pw.TextStyle(
+              fontSize: 10,
+              fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
+            ),
+          ),
+          pw.Text(
+            value,
+            style: pw.TextStyle(
+              fontSize: 10,
+              fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    final doc = pw.Document();
+
+    doc.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(28),
+        header: (context) => pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.center,
+          children: [
+            // ── 1. Shop logo ────────────────────────────────────────────
+            if (logo != null)
+              pw.Container(
+                height: 60,
+                margin: const pw.EdgeInsets.only(bottom: 6),
+                child: pw.Image(logo, fit: pw.BoxFit.contain),
+              ),
+            // ── 2. Shop name ────────────────────────────────────────────
+            pw.Text(
+              "KINGFOX CLOTHING PVT. LTD.",
+              style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
+            ),
+            // ── 3. Address ──────────────────────────────────────────────
+            pw.Text(
+              branch.address ?? '',
+              style: const pw.TextStyle(fontSize: 10),
+            ),
+            // ── 4. Phone & GSTIN ────────────────────────────────────────
+            pw.Text(
+              'Ph: ${branch.phone ?? ""}'
+              '${(branch.gstin ?? '').isNotEmpty ? "  |  GSTIN: ${branch.gstin}" : ""}',
+              style: const pw.TextStyle(fontSize: 10),
+            ),
+            pw.SizedBox(height: 8),
+            pw.Divider(thickness: 1),
+          ],
+        ),
+        build: (context) => [
+          // ── 5. Invoice # & date ───────────────────────────────────────
+          lv('Invoice#', inv, bold: true),
+          if (invoiceID != null)
+            lv('Bill No#', invoiceID.toString(), bold: true),
+          lv('Date', dateStr),
+
+          // ── 6. Customer ───────────────────────────────────────────────
+          if (data.customer != null) ...[
+            pw.Divider(),
+            if (data.customer!.name != null)
+              lv('Customer', data.customer!.name!, bold: true),
+            if (data.customer!.phone != null)
+              lv('Phone', data.customer!.phone!),
+          ],
+          pw.Divider(thickness: 1),
+
+          // ── 7. Items table ────────────────────────────────────────────
+          if (data.items.isNotEmpty)
+            pw.Table.fromTextArray(
+              border: null,
+              headerStyle: pw.TextStyle(
+                fontWeight: pw.FontWeight.bold,
+                fontSize: 10,
+              ),
+              cellStyle: const pw.TextStyle(fontSize: 9),
+              headerDecoration: const pw.BoxDecoration(
+                border: pw.Border(bottom: pw.BorderSide(width: 1)),
+              ),
+              cellAlignments: {
+                0: pw.Alignment.centerLeft,
+                1: pw.Alignment.centerRight,
+                2: pw.Alignment.center,
+                3: pw.Alignment.centerRight,
+                4: pw.Alignment.centerRight,
+              },
+              headers: ['Item / Variant', 'MRP', 'Qty', 'Rate', 'Amount'],
+              data: data.items.map((item) {
+                final qty = item.quantity ?? 1;
+                final lineTotal = item.lineTotal ?? 0;
+                final mrp = item.costPrice;
+                final sp = item.sellingPrice;
+                final displayRate = sp ?? mrp ?? (lineTotal / qty);
+                final variant = [
+                  item.size,
+                  item.color,
+                ].where((v) => v != null && v.isNotEmpty).join('/');
+                final nameVariant = variant.isNotEmpty
+                    ? '${item.productName ?? "Item"}  [$variant]'
+                    : (item.productName ?? 'Item');
+                return [
+                  nameVariant,
+                  moneyFmt.format(mrp ?? displayRate),
+                  '$qty',
+                  moneyFmt.format(displayRate),
+                  moneyFmt.format(lineTotal),
+                ];
+              }).toList(),
+            ),
+
+          if (totalSaved > 0) ...[
+            pw.Divider(),
+            lv('** You Saved **', moneyFmt.format(totalSaved), bold: true),
+          ],
+
+          // ── 8. Return items ───────────────────────────────────────────
+          if (data.returnItems.isNotEmpty) ...[
+            pw.SizedBox(height: 6),
+            pw.Text(
+              'Returns',
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+            ),
+            pw.Divider(),
+            ...data.returnItems.map((ri) {
+              final name = ri.productName ?? 'Return Item';
+              final variant = [
+                ri.size,
+                ri.color,
+              ].where((v) => v != null && v.isNotEmpty).join(' / ');
+              final credit = (ri.creditPerUnit ?? 0) * (ri.quantity ?? 1);
+              return lv(
+                '$name${variant.isNotEmpty ? " ($variant)" : ""}',
+                '-${moneyFmt.format(credit)}',
+              );
+            }),
+          ],
+
+          // ── 9. Totals ─────────────────────────────────────────────────
+          pw.Divider(thickness: 1),
+          if (data.subtotal != null)
+            lv('Subtotal', moneyFmt.format(data.subtotal)),
+          if (data.manualDiscountAmount != "0")
+            lv(
+              'Discount',
+              '-${moneyFmt.format(double.parse(data.manualDiscountAmount ?? "0"))}',
+            ),
+          if (data.appliedCouponDiscount != "0" &&
+              data.appliedCouponDiscount != null)
+            lv(
+              'Coupon Discount',
+              '-${moneyFmt.format(double.parse(data.appliedCouponDiscount ?? "0"))}',
+            ),
+          if ((data.appliedReturnDiscount ?? 0) > 0)
+            lv(
+              'Return Discount',
+              '-${moneyFmt.format(data.appliedReturnDiscount)}',
+            ),
+          if ((data.gstAmount ?? 0) > 0) ...[
+            lv(
+              'SGST (${(data.gstPercent ?? 0) / 2}%)',
+              moneyFmt.format((data.gstAmount ?? 0) / 2),
+            ),
+            lv(
+              'CGST (${(data.gstPercent ?? 0) / 2}%)',
+              moneyFmt.format((data.gstAmount ?? 0) / 2),
+            ),
+          ],
+          if (data.addons.isNotEmpty)
+            ...data.addons.map(
+              (a) => lv(a.name ?? 'Addon', moneyFmt.format(a.price ?? 0)),
+            ),
+
+          pw.Divider(thickness: 1.5),
+          lv(
+            'GRAND TOTAL',
+            moneyFmt.format(data.grandFinalTotal ?? 0),
+            bold: true,
+          ),
+          pw.Divider(thickness: 1.5),
+
+          // ── 10. Payments ──────────────────────────────────────────────
+          if (data.payments.isNotEmpty) ...[
+            pw.Text(
+              'Payment Details',
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+            ),
+            pw.Divider(),
+            ...data.payments.map(
+              (pay) => lv(
+                pay.paymentMethod ?? '-',
+                moneyFmt.format(pay.amount ?? 0),
+              ),
+            ),
+            if ((data.refundAmount ?? 0) > 0)
+              lv('Refund', moneyFmt.format(data.refundAmount), bold: true),
+          ],
+
+          // ── 11. Vouchers ──────────────────────────────────────────────
+          if (data.availableVouchers.isNotEmpty) ...[
+            pw.SizedBox(height: 6),
+            pw.Center(
+              child: pw.Text(
+                '---- Vouchers Issued ----',
+                style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              ),
+            ),
+            ...data.availableVouchers
+                .where((v) => v.voucherCode != null)
+                .map(
+                  (v) => pw.Center(
+                    child: pw.Text(
+                      '${v.campaignName ?? ''} - ${v.voucherCode}',
+                    ),
+                  ),
+                ),
+          ],
+
+          if (data.returnCoupon != null) ...[
+            pw.SizedBox(height: 6),
+            pw.Center(
+              child: pw.Text(
+                '---- Return Coupon ----',
+                style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              ),
+            ),
+            if (data.returnCoupon!.code != null)
+              pw.Center(
+                child: pw.Text(
+                  data.returnCoupon!.code!,
+                  style: pw.TextStyle(
+                    fontWeight: pw.FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            if ((data.returnCoupon!.amount ?? 0) > 0)
+              lv(
+                'Coupon Value',
+                moneyFmt.format(data.returnCoupon!.amount),
+                bold: true,
+              ),
+            pw.Center(child: pw.Text('Use this code on your next purchase')),
+          ],
+
+          // ── 12. Barcode ───────────────────────────────────────────────
+          if (data.invoiceNumber != null) ...[
+            pw.SizedBox(height: 12),
+            pw.Center(
+              child: pw.BarcodeWidget(
+                barcode: bc.Barcode.code128(),
+                data: data.invoiceNumber!
+                    .replaceAll('INV-', '')
+                    .replaceAll(RegExp(r'[^A-Za-z0-9]'), ''),
+                width: 200,
+                height: 50,
+              ),
+            ),
+          ],
+
+          // ── 13. Footer ────────────────────────────────────────────────
+          pw.SizedBox(height: 12),
+          pw.Divider(thickness: 1),
+          pw.Center(
+            child: pw.Text(
+              'Thank you for shopping!',
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14),
+            ),
+          ),
+          pw.Center(child: pw.Text('Visit us again')),
+          pw.Center(child: pw.Text('www.kingfoxclothing.com')),
+        ],
+      ),
+    );
+
+    if (!mockMode) {
+      await Printing.layoutPdf(
+        onLayout: (format) async => doc.save(),
+        name: 'Invoice_$inv',
+      );
+      _toast('Receipt sent to A4 printer ✓');
+    }
+  }
+
   Future<void> printTransferReceipt(CheckoutData data) async {
+    // ── Route to A4/PDF path when selected — thermal path below is untouched.
+    if (isA4Mode) {
+      await _printTransferReceiptA4(data);
+      return;
+    }
+
     if (!mockMode && !isConnected) {
       openPrinterSettings();
       _toast("Please connect printer");
@@ -825,10 +1212,8 @@ class PrinterController extends GetxController {
 
     List<int> bytes = [];
 
-    final moneyFmt = NumberFormat('#,##0.00');
     final dtFmt = DateFormat('dd MMM yyyy hh:mm a');
 
-    const normal = PosStyles();
     const bold = PosStyles(bold: true);
     const center = PosStyles(align: PosAlign.center);
     const right = PosStyles(align: PosAlign.right);
@@ -1010,6 +1395,174 @@ class PrinterController extends GetxController {
     }
   }
 
+  // ───────────────────────────────────────────────────────────────────────────
+  // PRINT TRANSFER RECEIPT — A4 / PDF path (mirrors printTransferReceipt)
+  // ───────────────────────────────────────────────────────────────────────────
+  Future<void> _printTransferReceiptA4(CheckoutData data) async {
+    final dtFmt = DateFormat('dd MMM yyyy hh:mm a');
+
+    //--------------------------------------------------
+    // Logo
+    //--------------------------------------------------
+    pw.MemoryImage? logo;
+    if (shopLogoPath != null) {
+      try {
+        Uint8List? raw;
+        if (shopLogoPath!.startsWith('assets/')) {
+          raw = await _loadAssetBytes(shopLogoPath!);
+        } else {
+          final file = File(shopLogoPath!);
+          if (await file.exists()) raw = await file.readAsBytes();
+        }
+        if (raw != null) logo = pw.MemoryImage(raw);
+      } catch (_) {}
+    }
+
+    //--------------------------------------------------
+    // Summary
+    //--------------------------------------------------
+    int totalQty = 0;
+    for (final item in data.items) {
+      totalQty += item.quantity ?? 0;
+    }
+
+    final doc = pw.Document();
+
+    doc.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(28),
+        header: (context) => pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.center,
+          children: [
+            // Logo
+            if (logo != null)
+              pw.Container(
+                height: 60,
+                margin: const pw.EdgeInsets.only(bottom: 6),
+                child: pw.Image(logo, fit: pw.BoxFit.contain),
+              ),
+            // Company
+            pw.Text(
+              "KINGFOX CLOTHING PVT. LTD.",
+              style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.Text(
+              "INVENTORY TRANSFER",
+              style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 8),
+            pw.Divider(thickness: 1),
+          ],
+        ),
+        build: (context) => [
+          // Transfer Details
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text("Transfer No", style: const pw.TextStyle(fontSize: 10)),
+              pw.Text(
+                data.invoiceNumber ?? "",
+                style: const pw.TextStyle(fontSize: 10),
+              ),
+            ],
+          ),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text("Date", style: const pw.TextStyle(fontSize: 10)),
+              pw.Text(
+                data.createdAt != null
+                    ? dtFmt.format(DateTime.parse(data.createdAt!))
+                    : '',
+                style: const pw.TextStyle(fontSize: 10),
+              ),
+            ],
+          ),
+          if (data.attendedByStaffName != null)
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text("By", style: const pw.TextStyle(fontSize: 10)),
+                pw.Text(
+                  data.attendedByStaffName!,
+                  style: const pw.TextStyle(fontSize: 10),
+                ),
+              ],
+            ),
+          pw.Divider(thickness: 1),
+
+          // Items
+          pw.Table.fromTextArray(
+            border: null,
+            headerStyle: pw.TextStyle(
+              fontWeight: pw.FontWeight.bold,
+              fontSize: 10,
+            ),
+            cellStyle: const pw.TextStyle(fontSize: 9),
+            headerDecoration: const pw.BoxDecoration(
+              border: pw.Border(bottom: pw.BorderSide(width: 1)),
+            ),
+            cellAlignments: {
+              0: pw.Alignment.centerLeft,
+              1: pw.Alignment.centerLeft,
+              2: pw.Alignment.centerRight,
+            },
+            headers: ['Item', 'Variant', 'Qty'],
+            data: data.items.map((item) {
+              final variant = [
+                item.color,
+                item.size,
+              ].where((e) => e != null && e.isNotEmpty).join(" / ");
+              return [item.productName ?? '', variant, "${item.quantity ?? 0}"];
+            }).toList(),
+          ),
+
+          // Summary
+          pw.Divider(thickness: 1),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text(
+                "Total Products",
+                style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              ),
+              pw.Text("${data.items.length}"),
+            ],
+          ),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text(
+                "Total Quantity",
+                style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              ),
+              pw.Text("$totalQty"),
+            ],
+          ),
+          pw.Divider(thickness: 1.5),
+
+          // Signature
+          pw.SizedBox(height: 30),
+          pw.Center(child: pw.Text("Receiver Signature")),
+          pw.SizedBox(height: 40),
+          pw.Center(child: pw.Text("_________________________")),
+          pw.SizedBox(height: 8),
+          pw.Center(child: pw.Text("www.kingfoxclothing.com")),
+        ],
+      ),
+    );
+
+    if (!mockMode) {
+      await Printing.layoutPdf(
+        onLayout: (format) async => doc.save(),
+        name:
+            'Transfer_${data.invoiceNumber ?? DateTime.now().millisecondsSinceEpoch}',
+      );
+      _toast("Transfer receipt sent to A4 printer");
+    }
+  }
+
   // ── CUPS (macOS) ───────────────────────────────────────────────────────────
   String _cupsSafeName(String? name) {
     if (name == null || name.isEmpty) return '';
@@ -1049,28 +1602,6 @@ class PrinterController extends GetxController {
     log('[Printer] CUPS accepted job for $queueName');
   }
 
-  // ── Mock preview ───────────────────────────────────────────────────────────
-  void _showMockPreview(CheckoutData data, List<int> bytes) {
-    Get.dialog(
-      AlertDialog(
-        title: const Text('Mock Print Preview'),
-        content: SizedBox(
-          width: 320,
-          child: SingleChildScrollView(
-            child: Text(
-              'Invoice : ${data.invoiceNumber ?? "-"}\n'
-              'Items   : ${data.items.length}\n'
-              'Total   : ${data.grandFinalTotal ?? 0}\n'
-              'Bytes   : ${bytes.length} bytes queued\n\n'
-              '(Mock mode — no hardware needed)',
-              style: const TextStyle(fontFamily: 'Courier', fontSize: 12),
-            ),
-          ),
-        ),
-        actions: [TextButton(onPressed: Get.back, child: const Text('Close'))],
-      ),
-    );
-  }
 
   // ── Asset loader ───────────────────────────────────────────────────────────
   Future<Uint8List> _loadAssetBytes(String path) async {

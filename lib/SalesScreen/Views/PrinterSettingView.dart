@@ -57,6 +57,8 @@ class _DialogShell extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  _PrinterModeToggle(ctrl: ctrl),
+                  SizedBox(height: 10.h),
                   _MockToggle(ctrl: ctrl),
                   SizedBox(height: 14.h),
                   _SectionLabel('Active Printer'),
@@ -142,6 +144,146 @@ class _Header extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Printer mode toggle (Thermal ↔ A4) ──────────────────────────────────────
+class _PrinterModeToggle extends StatelessWidget {
+  final PrinterController ctrl;
+  const _PrinterModeToggle({required this.ctrl});
+
+  @override
+  Widget build(BuildContext context) {
+    final isA4 = ctrl.isA4Mode;
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(8.r),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              _IconBadge(
+                icon: Icons.settings_outlined,
+                color: const Color(0xFF2F80ED),
+              ),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Print Output',
+                      style: TextStyle(
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF0F172A),
+                      ),
+                    ),
+                    SizedBox(height: 2.h),
+                    Text(
+                      isA4
+                          ? 'A4 — opens system print dialog'
+                          : 'Thermal — 80mm receipt printer',
+                      style: TextStyle(
+                        fontSize: 9.sp,
+                        color: const Color(0xFF94A3B8),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 10.h),
+          Row(
+            children: [
+              Expanded(
+                child: _ModeSegment(
+                  label: 'Thermal',
+                  icon: Icons.receipt_long_outlined,
+                  selected: !isA4,
+                  onTap: () => ctrl.setPrinterMode(PrinterMode.thermal),
+                ),
+              ),
+              SizedBox(width: 8.w),
+              Expanded(
+                child: _ModeSegment(
+                  label: 'A4 Printer',
+                  icon: Icons.description_outlined,
+                  selected: isA4,
+                  onTap: () => ctrl.setPrinterMode(PrinterMode.a4),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ModeSegment extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+  const _ModeSegment({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        height: 34.h,
+        decoration: BoxDecoration(
+          color: selected
+              ? const Color(0xFF2F80ED).withOpacity(0.1)
+              : Colors.white,
+          borderRadius: BorderRadius.circular(7.r),
+          border: Border.all(
+            color: selected
+                ? const Color(0xFF2F80ED).withOpacity(0.5)
+                : const Color(0xFFE2E8F0),
+            width: selected ? 1.2 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 13.sp,
+              color: selected
+                  ? const Color(0xFF2F80ED)
+                  : const Color(0xFF94A3B8),
+            ),
+            SizedBox(width: 6.w),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10.sp,
+                fontWeight: FontWeight.w600,
+                color: selected
+                    ? const Color(0xFF2F80ED)
+                    : const Color(0xFF94A3B8),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
