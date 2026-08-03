@@ -1226,6 +1226,8 @@ class PrinterController extends GetxController {
       bold: true,
       height: PosTextSize.size2,
     );
+    const smallLeft = PosStyles(fontType: PosFontType.fontB);
+    const smallBold = PosStyles(fontType: PosFontType.fontB, bold: true);
 
     //--------------------------------------------------
     // Logo
@@ -1264,17 +1266,11 @@ class PrinterController extends GetxController {
 
     bytes += generator.text("KINGFOX CLOTHING PVT. LTD.", styles: boldCenter);
 
-    // ── Explicit "Transfer Receipt" title (was "INVENTORY TRANSFER") ────────
+    // ── Explicit "Transfer Receipt" title ────────
     bytes += generator.text(
       "TRANSFER RECEIPT",
       styles: const PosStyles(align: PosAlign.center, bold: true),
     );
-    if (isB2B) {
-      bytes += generator.text(
-        "(B2B)",
-        styles: const PosStyles(align: PosAlign.center, bold: false),
-      );
-    }
 
     bytes += generator.hr(ch: '=');
 
@@ -1282,10 +1278,23 @@ class PrinterController extends GetxController {
     // Transfer Details
     //--------------------------------------------------
 
-    bytes += generator.row([
-      PosColumn(text: "Transfer No", width: 5),
-      PosColumn(text: data.invoiceNumber ?? "", width: 7, styles: right),
-    ]);
+    if (data.b2bDetails?.stockTransferId != null) {
+      bytes += generator.row([
+        PosColumn(text: "Transfer Ref#", width: 5),
+        PosColumn(
+          text: "TRF-${data.b2bDetails!.stockTransferId}",
+          width: 7,
+          styles: right,
+        ),
+      ]);
+    }
+
+    if (branch.gstin != null) {
+      bytes += generator.row([
+        PosColumn(text: "GSTIN", width: 5),
+        PosColumn(text: "${branch.gstin}", width: 7, styles: right),
+      ]);
+    }
 
     bytes += generator.row([
       PosColumn(text: "Date", width: 5),
@@ -1306,6 +1315,40 @@ class PrinterController extends GetxController {
     }
 
     bytes += generator.hr();
+
+    //--------------------------------------------------
+    // From / To branch block (B2B only) — shows source & destination
+    // branch name, address and phone.
+    //--------------------------------------------------
+    final fromBranch = data.b2bDetails?.fromBranch;
+    final toBranch = data.b2bDetails?.toBranch;
+
+    if (isB2B && (fromBranch != null || toBranch != null)) {
+      if (fromBranch != null) {
+        bytes += generator.text('FROM', styles: smallBold);
+        bytes += generator.text(fromBranch.name ?? '-', styles: bold);
+        if ((fromBranch.address ?? '').isNotEmpty) {
+          bytes += generator.text(fromBranch.address!, styles: smallLeft);
+        }
+        if ((fromBranch.phone ?? '').isNotEmpty) {
+          bytes += generator.text('Ph: ${fromBranch.phone}', styles: smallLeft);
+        }
+        bytes += generator.feed(1);
+      }
+
+      if (toBranch != null) {
+        bytes += generator.text('TO', styles: smallBold);
+        bytes += generator.text(toBranch.name ?? '-', styles: bold);
+        if ((toBranch.address ?? '').isNotEmpty) {
+          bytes += generator.text(toBranch.address!, styles: smallLeft);
+        }
+        if ((toBranch.phone ?? '').isNotEmpty) {
+          bytes += generator.text('Ph: ${toBranch.phone}', styles: smallLeft);
+        }
+      }
+
+      bytes += generator.hr();
+    }
 
     //--------------------------------------------------
     // Header — B2B shows price/amount columns, non-B2B keeps qty-only layout
@@ -1347,7 +1390,7 @@ class PrinterController extends GetxController {
     // Items — always listed individually, never collapsed/summed together
     //--------------------------------------------------
 
-    int totalQty = 0; // e.g. item qty 2 + item qty 3 = 5
+    int totalQty = 0;
 
     for (final item in data.items) {
       final qty = item.quantity ?? 0;
@@ -1386,7 +1429,7 @@ class PrinterController extends GetxController {
     bytes += generator.hr();
 
     //--------------------------------------------------
-    // Summary — B2B: no subtotal/GST/discount, just item + quantity counts
+    // Summary
     //--------------------------------------------------
 
     bytes += generator.row([
@@ -1401,7 +1444,11 @@ class PrinterController extends GetxController {
 
     bytes += generator.row([
       PosColumn(text: "Total Amount", width: 8, styles: bold),
-      PosColumn(text: "${data.grandFinalTotal}", width: 4, styles: right),
+      PosColumn(
+        text: moneyFmt.format(data.grandFinalTotal ?? 0),
+        width: 4,
+        styles: right,
+      ),
     ]);
 
     bytes += generator.hr(ch: '=');
@@ -1447,6 +1494,8 @@ class PrinterController extends GetxController {
     final dtFmt = DateFormat('dd MMM yyyy hh:mm a');
     final moneyFmt = NumberFormat('#,##0.00');
     final isB2B = (data.orderType ?? '').toUpperCase() == 'B2B';
+    final fromBranch = data.b2bDetails?.fromBranch;
+    final toBranch = data.b2bDetails?.toBranch;
 
     //--------------------------------------------------
     // Logo
@@ -1466,12 +1515,43 @@ class PrinterController extends GetxController {
     }
 
     //--------------------------------------------------
-    // Summary — item count + summed quantity across all lines
-    //--------------------------------------------------
     int totalQty = 0;
     for (final item in data.items) {
       totalQty += item.quantity ?? 0;
     }
+
+    pw.Widget branchBlock(String label, TransferBranch b) => pw.Expanded(
+      child: pw.Container(
+        padding: const pw.EdgeInsets.all(8),
+        decoration: pw.BoxDecoration(border: pw.Border.all(width: 0.5)),
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Text(
+              label,
+              style: pw.TextStyle(
+                fontSize: 8,
+                fontWeight: pw.FontWeight.bold,
+                color: PdfColors.grey700,
+              ),
+            ),
+            pw.SizedBox(height: 2),
+            pw.Text(
+              b.name ?? '-',
+              style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+            ),
+            if ((b.address ?? '').isNotEmpty) ...[
+              pw.SizedBox(height: 2),
+              pw.Text(b.address!, style: const pw.TextStyle(fontSize: 9)),
+            ],
+            if ((b.phone ?? '').isNotEmpty) ...[
+              pw.SizedBox(height: 2),
+              pw.Text('Ph: ${b.phone}', style: const pw.TextStyle(fontSize: 9)),
+            ],
+          ],
+        ),
+      ),
+    );
 
     final doc = pw.Document();
 
@@ -1482,21 +1562,18 @@ class PrinterController extends GetxController {
         header: (context) => pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.center,
           children: [
-            // Logo
             if (logo != null)
               pw.Container(
                 height: 60,
                 margin: const pw.EdgeInsets.only(bottom: 6),
                 child: pw.Image(logo, fit: pw.BoxFit.contain),
               ),
-            // Company
             pw.Text(
               "KINGFOX CLOTHING PVT. LTD.",
               style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
             ),
-            // ── Explicit "Transfer Receipt" title ─────────────────────────
             pw.Text(
-              "TRANSFER RECEIPT",
+              isB2B ? "TRANSFER RECEIPT " : "TRANSFER RECEIPT",
               style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
             ),
             pw.SizedBox(height: 8),
@@ -1505,22 +1582,48 @@ class PrinterController extends GetxController {
         ),
         build: (context) => [
           // Transfer Details
-          pw.Row(
-            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-            children: [
-              pw.Text("Transfer No", style: const pw.TextStyle(fontSize: 10)),
-              pw.Text(
-                data.invoiceNumber ?? "",
-                style: const pw.TextStyle(fontSize: 10),
-              ),
-            ],
-          ),
+          // pw.Row(
+          //   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          //   children: [
+          //     pw.Text("Transfer No", style: const pw.TextStyle(fontSize: 10)),
+          //     pw.Text(
+          //       data.invoiceNumber ?? "",
+          //       style: const pw.TextStyle(fontSize: 10),
+          //     ),
+          //   ],
+          // ),
+          if (data.b2bDetails?.stockTransferId != null)
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text(
+                  "Transfer Ref#",
+                  style: const pw.TextStyle(fontSize: 10),
+                ),
+                pw.Text(
+                  "TRF-${data.b2bDetails!.stockTransferId}",
+                  style: const pw.TextStyle(fontSize: 10),
+                ),
+              ],
+            ),
+
+          if (branch.gstin != null)
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text("GSTIN", style: const pw.TextStyle(fontSize: 10)),
+                pw.Text(
+                  branch.gstin ?? "",
+                  style: const pw.TextStyle(fontSize: 10),
+                ),
+              ],
+            ),
           pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
               pw.Text("Date", style: const pw.TextStyle(fontSize: 10)),
               pw.Text(
-                data.createdAt != null
+                data.payments.isNotEmpty && data.payments.first.paidAt != null
                     ? dtFmt.format(
                         DateTime.parse(data.payments.first.paidAt!).toLocal(),
                       )
@@ -1542,7 +1645,23 @@ class PrinterController extends GetxController {
             ),
           pw.Divider(thickness: 1),
 
-          // Items — B2B adds Price/Amount columns, no subtotal/GST/discount rows
+          // ── From / To branch cards (B2B only) ──────────────────────────
+          if (isB2B && (fromBranch != null || toBranch != null)) ...[
+            pw.SizedBox(height: 6),
+            pw.Row(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                if (fromBranch != null) branchBlock('FROM', fromBranch),
+                if (fromBranch != null && toBranch != null)
+                  pw.SizedBox(width: 10),
+                if (toBranch != null) branchBlock('TO', toBranch),
+              ],
+            ),
+            pw.SizedBox(height: 10),
+            pw.Divider(thickness: 1),
+          ],
+
+          // Items
           if (isB2B)
             pw.Table.fromTextArray(
               border: null,
@@ -1610,7 +1729,7 @@ class PrinterController extends GetxController {
               }).toList(),
             ),
 
-          // Summary — item count + combined quantity only
+          // Summary
           pw.Divider(thickness: 1),
           pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
@@ -1632,6 +1751,7 @@ class PrinterController extends GetxController {
               pw.Text("$totalQty"),
             ],
           ),
+
           pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
@@ -1639,12 +1759,12 @@ class PrinterController extends GetxController {
                 "Total Amount",
                 style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
               ),
-              pw.Text("${data.grandFinalTotal}"),
+              pw.Text(moneyFmt.format(data.grandFinalTotal ?? 0)),
             ],
           ),
           pw.Divider(thickness: 1.5),
 
-          // Signatures — Sender & Receiver side by side
+          // Signatures
           pw.SizedBox(height: 40),
           pw.Row(
             children: [
@@ -1689,9 +1809,8 @@ class PrinterController extends GetxController {
       );
       _toast("Transfer receipt sent to A4 printer");
     }
-  }
+  } // ── CUPS (macOS) ───────────────────────────────────────────────────────────
 
-  // ── CUPS (macOS) ───────────────────────────────────────────────────────────
   String _cupsSafeName(String? name) {
     if (name == null || name.isEmpty) return '';
     return name.trim().replaceAll(RegExp(r'[\s\-]+'), '_');

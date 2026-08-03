@@ -27,6 +27,7 @@ class CheckoutData {
   final String? orderType;
   final List<Addon> addons;
   final double? totalAddonPrice;
+  final B2BDetails? b2bDetails;
 
   const CheckoutData({
     this.cartId,
@@ -57,6 +58,7 @@ class CheckoutData {
     this.attendedByStaffName,
     this.addons = const [],
     this.totalAddonPrice,
+    this.b2bDetails,
   });
 
   factory CheckoutData.fromJson(Map<String, dynamic> j) => CheckoutData(
@@ -98,6 +100,9 @@ class CheckoutData {
     status: j["status"],
     returnCoupon: j["returnCoupon"] != null
         ? ReturnCoupon.fromJson(j["returnCoupon"])
+        : null,
+    b2bDetails: j["b2bDetails"] != null
+        ? B2BDetails.fromJson(j["b2bDetails"])
         : null,
   );
 }
@@ -267,4 +272,58 @@ class Addon {
       Addon(name: j['name'], price: (j['price'] as num?)?.toDouble());
 
   Map<String, dynamic> toJson() => {'name': name, 'price': price};
+}
+
+/// Branch details used inside [B2BDetails] — either the source (fromBranch)
+/// or destination (toBranch) branch for a B2B stock-transfer checkout.
+class TransferBranch {
+  final int? id;
+  final String? name;
+  final String? code;
+  final String? address;
+  final String? phone;
+
+  const TransferBranch({
+    this.id,
+    this.name,
+    this.code,
+    this.address,
+    this.phone,
+  });
+
+  factory TransferBranch.fromJson(Map<String, dynamic> j) => TransferBranch(
+    id: j['id'],
+    name: j['name'],
+    code: j['code'],
+    address: j['address'],
+    phone: j['phone'],
+  );
+}
+
+/// B2B-only block returned by the backend when `orderType == 'B2B'`.
+/// Carries the linked stock-transfer id/status plus source & destination
+/// branch details (used for the transfer receipt printout).
+class B2BDetails {
+  final int? stockTransferId;
+  final String? stockTransferStatus;
+  final TransferBranch? fromBranch;
+  final TransferBranch? toBranch;
+
+  const B2BDetails({
+    this.stockTransferId,
+    this.stockTransferStatus,
+    this.fromBranch,
+    this.toBranch,
+  });
+
+  factory B2BDetails.fromJson(Map<String, dynamic> j) => B2BDetails(
+    stockTransferId: j['stockTransferId'],
+    stockTransferStatus: j['stockTransferStatus'],
+    fromBranch: j['fromBranch'] != null
+        ? TransferBranch.fromJson(j['fromBranch'])
+        : null,
+    toBranch: j['toBranch'] != null
+        ? TransferBranch.fromJson(j['toBranch'])
+        : null,
+  );
 }
