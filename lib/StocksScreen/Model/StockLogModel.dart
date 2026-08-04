@@ -8,6 +8,7 @@ class StockLogModel {
   final String? branch;
   final int? amount;
   final String? date;
+  final String? status;
   final String? time;
 
   StockLogModel({
@@ -20,6 +21,7 @@ class StockLogModel {
     this.amount,
     this.date,
     this.time,
+    this.status,
     this.transferId,
   });
 
@@ -34,6 +36,7 @@ class StockLogModel {
       amount: json['amount'],
       date: json['date'],
       time: json['time'],
+      status: json["status"],
       transferId: json["transferId"],
     );
   }

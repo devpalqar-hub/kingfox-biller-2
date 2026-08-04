@@ -333,7 +333,7 @@ class OrderCompleteDialog extends StatelessWidget {
       child: Row(
         children: [
           Text(
-            '$itemCount items  ·  GST ${data.gstPercent?.toStringAsFixed(0) ?? '0'}%  ·  ${data.invoiceNumber ?? ''}',
+            '${data.items.length} items  · ${getTotalQuantity(data)} qty · GST ${data.gstPercent?.toStringAsFixed(0) ?? '0'}%  ·  ${data.invoiceNumber ?? ''}',
             style: TextStyle(color: const Color(0xFF94A3B8), fontSize: 10.sp),
           ),
           const Spacer(),
@@ -644,6 +644,16 @@ class _LineItemsCard extends StatelessWidget {
 // ════════════════════════════════════════════════════════════════════════════
 // RETURN ITEMS CARD
 // ════════════════════════════════════════════════════════════════════════════
+
+int getTotalQuantity(CheckoutData data) {
+  int total = 0;
+
+  for (CartItem item in data.items) {
+    total = total + (item.quantity ?? 0);
+  }
+
+  return total;
+}
 
 class _ReturnItemsCard extends StatelessWidget {
   final List<ReturnItem> returnItems;

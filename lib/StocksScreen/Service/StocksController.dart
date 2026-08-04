@@ -58,9 +58,7 @@ class StocksController extends GetxController {
         } else {
           final newItems = data.map((e) => StockLogModel.fromJson(e)).toList();
 
-          logs.addAll(
-            newItems.where((item) => !logs.any((i) => i.id == item.id)),
-          );
+          logs.addAll(newItems);
 
           if (pagination != null) {
             int currentPage = pagination['page'] ?? page;

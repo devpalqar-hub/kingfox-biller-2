@@ -1,9 +1,12 @@
 import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get_core/src/get_main.dart';
+import 'package:get/get_instance/src/extension_instance.dart';
 import 'package:kinfox_biller/SalesScreen/Model/CartModel.dart';
+import 'package:kinfox_biller/SalesScreen/Service/AddProductController.dart';
 
-class _RowModel {
+class CartItemTableModel {
   String? productName;
   double? price;
   double? lineTotal;
@@ -14,7 +17,7 @@ class _RowModel {
   String? size;
   String? color;
 
-  _RowModel({
+  CartItemTableModel({
     this.productName,
     this.isReturn,
     this.price,
@@ -43,11 +46,12 @@ class CartTableWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<_RowModel> rows = [];
+    AddProductController ctrl = Get.find();
+    List<CartItemTableModel> rows = [];
 
     for (var data in cart.items) {
       rows.add(
-        _RowModel(
+        CartItemTableModel(
           productName: data.productName,
           qty: data.quantity,
           price: data.price,
@@ -63,7 +67,7 @@ class CartTableWidget extends StatelessWidget {
 
     for (var data in cart.returnItems) {
       rows.add(
-        _RowModel(
+        CartItemTableModel(
           productName: data.productName,
           qty: data.quantity,
           price: data.creditPerUnit,
@@ -266,7 +270,7 @@ class CartTableWidget extends StatelessWidget {
             child: Row(
               children: [
                 Text(
-                  '${rows.length} item${rows.length == 1 ? '' : 's'}',
+                  '${rows.length} item${rows.length == 1 ? '' : 's'} , ${ctrl.getItemQuantity(rows)} quantity',
                   style: TextStyle(
                     fontSize: 11.sp,
                     color: const Color(0xFF64748B),

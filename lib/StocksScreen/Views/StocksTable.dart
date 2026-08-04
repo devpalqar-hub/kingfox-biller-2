@@ -34,6 +34,7 @@ class StocksTable extends StatelessWidget {
                   item.amount?.toString() ?? "0",
                   item.id,
                   item.transferId,
+                  item.status,
                   ctrl,
                 );
               }),
@@ -60,7 +61,7 @@ class StocksTable extends StatelessWidget {
         ),
         Expanded(
           flex: 2,
-          child: Text("TYPE", style: TextStyle(fontWeight: FontWeight.bold)),
+          child: Text("TYPE ", style: TextStyle(fontWeight: FontWeight.bold)),
         ),
         Expanded(
           flex: 2,
@@ -96,6 +97,7 @@ class StocksTable extends StatelessWidget {
     String amount,
     int? id,
     int? transferId,
+    String? status,
     StocksController ctrl,
   ) {
     return Padding(
@@ -104,15 +106,18 @@ class StocksTable extends StatelessWidget {
         children: [
           Expanded(flex: 2, child: Text("$date\n$time")),
           Expanded(flex: 2, child: Text(user)),
-          Expanded(flex: 2, child: Text("$type\n$transferType")),
+          Expanded(
+            flex: 2,
+            child: Text("$type\n$transferType ((${transferId}))"),
+          ),
           Expanded(flex: 2, child: Text(sku.replaceAll(" - ", "\n"))),
           Expanded(flex: 2, child: Text(branch)),
           Expanded(flex: 1, child: Text(amount)),
           Expanded(
             flex: 1,
             child:
-                (transferType.toLowerCase() != "received" &&
-                    transferType.toLowerCase() != "completed" &&
+                (status.toString().toLowerCase() != "received" &&
+                    status.toString().toLowerCase() != "completed" &&
                     transferId != null)
                 ? ElevatedButton(
                     onPressed: id != null

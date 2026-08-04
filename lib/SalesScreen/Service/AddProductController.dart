@@ -11,6 +11,7 @@ import 'package:kinfox_biller/SalesScreen/Model/ProductModel.dart';
 import 'package:kinfox_biller/SalesScreen/Model/StaffModel.dart';
 import 'package:kinfox_biller/SalesScreen/Service/CustomerController.dart';
 import 'package:kinfox_biller/SalesScreen/Service/PrinterController.dart';
+import 'package:kinfox_biller/SalesScreen/Views/CartTable.dart';
 import 'package:kinfox_biller/main.dart';
 import 'package:flutter/material.dart';
 
@@ -637,6 +638,14 @@ class AddProductController extends GetxController {
     update();
 
     return false;
+  }
+
+  int getItemQuantity(List<CartItemTableModel> items) {
+    int sum = 0;
+    for (CartItemTableModel data in items) {
+      sum = sum + (data.qty ?? 0);
+    }
+    return sum;
   }
 
   Future<void> updateCartItemQuantity(int variantId, int quantity) async {
