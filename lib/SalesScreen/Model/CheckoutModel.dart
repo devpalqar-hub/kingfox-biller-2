@@ -1,4 +1,5 @@
 class CheckoutData {
+  final int ? id;
   final int? cartId;
   final double? gstPercent;
   final int? returnInvoiceId;
@@ -30,6 +31,7 @@ class CheckoutData {
   final B2BDetails? b2bDetails;
 
   const CheckoutData({
+    this.id,
     this.cartId,
     this.gstPercent,
     this.returnInvoiceId,
@@ -62,6 +64,7 @@ class CheckoutData {
   });
 
   factory CheckoutData.fromJson(Map<String, dynamic> j) => CheckoutData(
+    id: j['id'],
     cartId: j['cartId'],
     gstPercent: (j['gstPercent'] as num?)?.toDouble(),
     returnInvoiceId: j['returnInvoiceId'],

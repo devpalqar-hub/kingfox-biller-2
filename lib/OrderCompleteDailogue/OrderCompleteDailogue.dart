@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:get/get_instance/get_instance.dart';
+import 'package:intl/intl.dart';
+import 'package:kinfox_biller/OverViewScreen/Service/HistoryController.dart';
 import 'package:kinfox_biller/SalesScreen/Model/CheckoutModel.dart';
 import 'package:kinfox_biller/SalesScreen/Service/PrinterController.dart';
 
@@ -129,6 +132,19 @@ class OrderCompleteDialog extends StatelessWidget {
                             paidAt: data.createdAt,
                             totalPaid: data.grandFinalTotal ?? 0,
                             tenderedAmount: _tenderedAmount,
+                          ),
+                          if (data.payments.isEmpty ||
+                              data.payments.every(
+                                (e) => e.paymentMethod == null,
+                              ))
+                            SizedBox(height: 10.h),
+                          _sectionLabel(
+                            Icons.payments_outlined,
+                            'PAYMENT PENDING',
+                          ),
+                          _CompletePaymentCard(
+                            invoice: data,
+                            controller: Get.put(Historycontroller()),
                           ),
                         ],
                       ),
@@ -1140,7 +1156,7 @@ class _PaymentAttributionCard extends StatelessWidget {
                     label: 'Method',
                     child: payments.length == 1
                         ? Text(
-                            payments.first.paymentMethod ?? '—',
+                            payments.first.paymentMethod ?? 'CREDIT',
                             style: TextStyle(
                               fontSize: 12.sp,
                               fontWeight: FontWeight.w500,
@@ -1150,7 +1166,10 @@ class _PaymentAttributionCard extends StatelessWidget {
                         : Wrap(
                             spacing: 4.w,
                             children: payments
-                                .map((p) => _methodTag(p.paymentMethod ?? '—'))
+                                .map(
+                                  (p) =>
+                                      _methodTag(p.paymentMethod ?? 'CREDIT'),
+                                )
                                 .toList(),
                           ),
                     borderRight: true,
@@ -1160,7 +1179,11 @@ class _PaymentAttributionCard extends StatelessWidget {
                 Expanded(
                   child: _cell(
                     label: 'Status',
-                    child: _paidBadge(),
+                    child:
+                        (payments.isEmpty ||
+                            payments.every((p) => p.paymentMethod == null))
+                        ? _pendingBadge()
+                        : _paidBadge(),
                     borderBottom: true,
                   ),
                 ),
@@ -1231,7 +1254,7 @@ class _PaymentAttributionCard extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            p.paymentMethod ?? '—',
+                            p.paymentMethod ?? 'CREDIT',
                             style: TextStyle(
                               fontSize: 11.sp,
                               color: const Color(0xFF64748B),
@@ -1405,6 +1428,31 @@ class _PaymentAttributionCard extends StatelessWidget {
     final min = dt.minute.toString().padLeft(2, '0');
     return '${dt.day} ${m[dt.month - 1]} ${dt.year}  $h:$min $ap';
   }
+}
+
+Widget _pendingBadge() {
+  return Container(
+    padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 2.h),
+    decoration: BoxDecoration(
+      color: const Color(0xFFFFF7ED),
+      borderRadius: BorderRadius.circular(4.r),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.schedule, size: 12.sp, color: const Color(0xFFEA580C)),
+        SizedBox(width: 4.w),
+        Text(
+          "PENDING",
+          style: TextStyle(
+            fontSize: 10.sp,
+            fontWeight: FontWeight.w500,
+            color: const Color(0xFFEA580C),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -1754,5 +1802,488 @@ class _CustomerMiniCard extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _CompletePaymentCard extends StatefulWidget {
+  final CheckoutData invoice;
+  final Historycontroller controller;
+
+  const _CompletePaymentCard({required this.invoice, required this.controller});
+
+  @override
+  State<_CompletePaymentCard> createState() => _CompletePaymentCardState();
+}
+
+class _CompletePaymentCardState extends State<_CompletePaymentCard> {
+  final TextEditingController cashController = TextEditingController();
+
+  final TextEditingController upiController = TextEditingController();
+
+  final TextEditingController cardController = TextEditingController();
+
+  DateTime selectedDate = DateTime.now();
+
+  final List<String> selectedMethods = [];
+
+  double get payableAmount {
+    final total = widget.invoice.grandFinalTotal ?? 0.0;
+
+    double paid = 0.0;
+
+    for (final payment in widget.invoice.payments) {
+      paid += payment.amount ?? 0.0;
+    }
+
+    final remaining = total - paid;
+
+    return remaining < 0 ? 0.0 : remaining;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: EdgeInsets.only(top: 6.h),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10.r),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: .6),
+      ),
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            //-------------------------------------------------
+            // HEADER
+            //-------------------------------------------------
+            Row(
+              children: [
+                Text(
+                  "COMPLETE PAYMENT",
+                  style: TextStyle(
+                    color: const Color(0xFF94A3B8),
+                    fontSize: 10.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+
+                SizedBox(width: 25.w),
+
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 10.w,
+                    vertical: 5.h,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0FDF4),
+                    borderRadius: BorderRadius.circular(6.r),
+                    border: Border.all(
+                      color: const Color(0xFFBBF7D0),
+                      width: .2,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        "Amount : ",
+                        style: TextStyle(
+                          fontSize: 10.sp,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF64748B),
+                        ),
+                      ),
+                      Text(
+                        "₹${payableAmount.toStringAsFixed(2)}",
+                        style: TextStyle(
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF15803D),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 10.h),
+            Text(
+              "PAYMENT METHOD",
+              style: TextStyle(
+                color: const Color(0xFF94A3B8),
+                fontSize: 10.sp,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+
+            SizedBox(height: 10.h),
+
+            Row(
+              children: [
+                Expanded(child: _methodTile("CASH", Icons.payments)),
+
+                SizedBox(width: 8.w),
+
+                Expanded(child: _methodTile("UPI", Icons.qr_code)),
+
+                SizedBox(width: 8.w),
+
+                Expanded(child: _methodTile("CARD", Icons.credit_card)),
+              ],
+            ),
+
+            //-------------------------------------------------
+            // SPLIT PAYMENT
+            //-------------------------------------------------
+            if (selectedMethods.length == 2)
+              Padding(
+                padding: EdgeInsets.only(top: 18.h),
+                child: Column(
+                  children: [
+                    if (selectedMethods.contains("CASH"))
+                      _amountField("Cash Amount", cashController),
+
+                    if (selectedMethods.contains("UPI"))
+                      Padding(
+                        padding: EdgeInsets.only(top: 12.h),
+                        child: _amountField("UPI Amount", upiController),
+                      ),
+
+                    if (selectedMethods.contains("CARD"))
+                      Padding(
+                        padding: EdgeInsets.only(top: 12.h),
+                        child: _amountField("Card Amount", cardController),
+                      ),
+                  ],
+                ),
+              ),
+
+            SizedBox(height: 12.h),
+
+            //-------------------------------------------------
+            // DATE
+            //-------------------------------------------------
+            InkWell(
+              borderRadius: BorderRadius.circular(8.r),
+              onTap: () async {
+                final d = await showDatePicker(
+                  context: context,
+                  initialDate: selectedDate,
+                  firstDate: DateTime(2024),
+                  lastDate: DateTime(2100),
+                );
+
+                if (d != null) {
+                  setState(() {
+                    selectedDate = d;
+                  });
+                }
+              },
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                decoration: BoxDecoration(
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.event,
+                      size: 18.sp,
+                      color: Colors.blueGrey.shade400,
+                    ),
+
+                    SizedBox(width: 10.w),
+
+                    Expanded(
+                      child: Text(
+                        DateFormat("dd MMM yyyy").format(selectedDate),
+                        // style: AppTextStyles
+                        //     .body13,
+                      ),
+                    ),
+
+                    Icon(Icons.keyboard_arrow_down, size: 18.sp),
+                  ],
+                ),
+              ),
+            ),
+
+            SizedBox(height: 22.h),
+
+            SizedBox(
+              width: double.infinity,
+              height: 46.h,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  elevation: 0,
+                  backgroundColor: const Color(0xFF2563EB),
+
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                ),
+                onPressed: _submit,
+                icon: Icon(
+                  Icons.check_circle,
+                  color: Colors.white,
+                  size: 14.sp,
+                ),
+                label: Text(
+                  "Complete Payment",
+
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _cell({
+    required String label,
+    required Widget child,
+    bool borderRight = false,
+    bool borderBottom = false,
+  }) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 9.h),
+      decoration: BoxDecoration(
+        border: Border(
+          right: borderRight
+              ? const BorderSide(color: Color(0xFFE2E8F0), width: .5)
+              : BorderSide.none,
+          bottom: borderBottom
+              ? const BorderSide(color: Color(0xFFE2E8F0), width: .5)
+              : BorderSide.none,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label.toUpperCase(),
+            style: TextStyle(
+              fontSize: 10.sp,
+              color: const Color(0xFF94A3B8),
+              fontWeight: FontWeight.w500,
+              letterSpacing: .6,
+            ),
+          ),
+          SizedBox(height: 3.h),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _methodTile(String method, IconData icon) {
+    final selected = selectedMethods.contains(method);
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(6.r),
+      onTap: () {
+        setState(() {
+          if (selected) {
+            selectedMethods.remove(method);
+          } else {
+            if (selectedMethods.length < 2) {
+              selectedMethods.add(method);
+            }
+          }
+
+          if (selectedMethods.length != 2) {
+            cashController.clear();
+            upiController.clear();
+            cardController.clear();
+          }
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        height: 34.h,
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFFEFF6FF) : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(6.r),
+          border: Border.all(
+            color: selected ? const Color(0xFF3B82F6) : const Color(0xFFE2E8F0),
+            width: .6,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 13.sp,
+              color: selected
+                  ? const Color(0xFF2563EB)
+                  : const Color(0xFF64748B),
+            ),
+            SizedBox(width: 5.w),
+            Text(
+              method,
+              style: TextStyle(
+                fontSize: 10.sp,
+                fontWeight: FontWeight.w600,
+                color: selected
+                    ? const Color(0xFF2563EB)
+                    : const Color(0xFF334155),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _amountField(String label, TextEditingController controller) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: TextStyle(
+            fontSize: 10.sp,
+            color: const Color(0xFF94A3B8),
+            fontWeight: FontWeight.w500,
+            letterSpacing: .5,
+          ),
+        ),
+        SizedBox(height: 5.h),
+        SizedBox(
+          height: 34.h,
+          child: TextField(
+            controller: controller,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            style: TextStyle(
+              fontSize: 12.sp,
+              fontWeight: FontWeight.w500,
+              color: const Color(0xFF1E293B),
+            ),
+            decoration: InputDecoration(
+              prefixText: "₹ ",
+              hintText: "0.00",
+              filled: true,
+              fillColor: Colors.white,
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 12.w,
+                vertical: 8.h,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8.r),
+                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8.r),
+                borderSide: const BorderSide(color: Color(0xFF2563EB)),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _submit() async {
+    if (selectedMethods.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please select a payment method")),
+      );
+      return;
+    }
+
+    final List<Map<String, dynamic>> payments = [];
+
+    //------------------------------------------------------
+    // Single payment
+    //------------------------------------------------------
+
+    if (selectedMethods.length == 1) {
+      payments.add({
+        "paymentMethod": selectedMethods.first,
+        "amount": payableAmount,
+        "date": DateFormat("yyyy-MM-dd").format(selectedDate),
+      });
+    }
+    //------------------------------------------------------
+    // Split payment
+    //------------------------------------------------------
+    else {
+      final cash = double.tryParse(cashController.text) ?? 0;
+
+      final upi = double.tryParse(upiController.text) ?? 0;
+
+      final card = double.tryParse(cardController.text) ?? 0;
+
+      final total = cash + upi + card;
+
+      if ((total - payableAmount).abs() > 0.01) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              "Split amount must equal ₹${payableAmount.toStringAsFixed(2)}",
+            ),
+          ),
+        );
+        return;
+      }
+
+      if (cash > 0) {
+        payments.add({
+          "paymentMethod": "CASH",
+          "amount": cash,
+          "date": DateFormat("yyyy-MM-dd").format(selectedDate),
+        });
+      }
+
+      if (upi > 0) {
+        payments.add({
+          "paymentMethod": "UPI",
+          "amount": upi,
+          "date": DateFormat("yyyy-MM-dd").format(selectedDate),
+        });
+      }
+
+      if (card > 0) {
+        payments.add({
+          "paymentMethod": "CARD",
+          "amount": card,
+          "date": DateFormat("yyyy-MM-dd").format(selectedDate),
+        });
+      }
+    }
+
+    final success = await widget.controller.addInvoicePayments(
+      invoiceId: widget.invoice.id ?? 0,
+      payments: payments,
+    );
+
+    if (!mounted) return;
+
+    if (success) {
+      await widget.controller.getInvoices(refresh: true);
+
+      Navigator.pop(context);
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Payment failed")));
+    }
+  }
+
+  @override
+  void dispose() {
+    cashController.dispose();
+    upiController.dispose();
+    cardController.dispose();
+    super.dispose();
   }
 }

@@ -4,7 +4,6 @@ import 'package:get/get.dart';
 
 import 'package:kinfox_biller/SalesScreen/Service/AddProductController.dart';
 
-
 class PaymentMethodCard extends StatelessWidget {
   const PaymentMethodCard({super.key});
 
@@ -12,14 +11,14 @@ class PaymentMethodCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GetBuilder<AddProductController>(
       builder: (ctrl) {
-     final bool isWarehouseBranch =
-    (ctrl.branch.type).trim().toUpperCase() == "WAREHOUSE";
+        final bool isWarehouseBranch =
+            (ctrl.branch.type).trim().toUpperCase() == "WAREHOUSE";
 
-      debugPrint("================================");
-      debugPrint("Branch Name: ${ctrl.branch.name}");
-      debugPrint("Branch Type: ${ctrl.branch.type}");
-      debugPrint("Is Warehouse Branch: $isWarehouseBranch");
-      debugPrint("================================");
+        debugPrint("================================");
+        debugPrint("Branch Name: ${ctrl.branch.name}");
+        debugPrint("Branch Type: ${ctrl.branch.type}");
+        debugPrint("Is Warehouse Branch: $isWarehouseBranch");
+        debugPrint("================================");
         return Container(
           padding: EdgeInsets.all(10.w),
           decoration: BoxDecoration(
@@ -155,17 +154,57 @@ class PaymentMethodCard extends StatelessWidget {
                 SizedBox(height: 8.h),
               ],
 
+              Opacity(
+                opacity: ctrl.isPending ? 0.45 : 1,
+                child: IgnorePointer(
+                  ignoring: ctrl.isPending,
+                  child: Row(
+                    children: [
+                      Expanded(child: _compactOption(ctrl, "Cash", "cash")),
+
+                      SizedBox(width: 8.w),
+
+                      Expanded(child: _compactOption(ctrl, "UPI", "upi")),
+
+                      SizedBox(width: 8.w),
+
+                      Expanded(child: _compactOption(ctrl, "Card", "card")),
+                    ],
+                  ),
+                ),
+              ),
+              SizedBox(height: 12.h),
+
+              Text(
+                "Payment Status",
+                style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600),
+              ),
+
+              SizedBox(height: 8.h),
+
               Row(
                 children: [
-                  Expanded(child: _compactOption(ctrl, "Cash", "cash")),
-                  SizedBox(width: 8.w),
-                  Expanded(child: _compactOption(ctrl, "UPI", "upi")),
-                  SizedBox(width: 8.w),
-                  Expanded(child: _compactOption(ctrl, "Card", "card")),
+                  Expanded(
+                    child: _paymentStatusCard(
+                      ctrl,
+                      title: "Paid",
+                      value: false,
+                    ),
+                  ),
+
+                  SizedBox(width: 10.w),
+                  Expanded(
+                    child: _paymentStatusCard(
+                      ctrl,
+                      title: "Pending",
+                      value: true,
+                    ),
+                  ),
+                 
                 ],
               ),
 
-              if (ctrl.selectedPaymentMethods.length == 2) ...[
+              if (!ctrl.isPending && ctrl.selectedPaymentMethods.length == 2) ...[
                 SizedBox(height: 8.h),
                 Row(
                   children: [
@@ -293,6 +332,66 @@ class PaymentMethodCard extends StatelessWidget {
             fontSize: 13.sp,
             fontWeight: FontWeight.w500,
           ), // Increased
+        ),
+      ),
+    );
+  }
+
+  Widget _paymentStatusCard(
+    AddProductController ctrl, {
+    required String title,
+    required bool value,
+  }) {
+    final selected = ctrl.isPending == value;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(8.r),
+      onTap: () {
+        ctrl.isPending = value;
+
+        if (value) {
+          ctrl.selectedPaymentMethods.clear();
+
+          ctrl.cashAmountController.clear();
+          ctrl.cardAmountController.clear();
+          ctrl.upiAmountController.clear();
+        }
+
+        ctrl.update();
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        height: 42.h,
+        padding: EdgeInsets.symmetric(horizontal: 12.w),
+        decoration: BoxDecoration(
+          color: selected
+              ? const Color(0xff1D4ED8).withOpacity(.08)
+              : Colors.white,
+          borderRadius: BorderRadius.circular(8.r),
+          border: Border.all(
+            color: selected ? const Color(0xff1D4ED8) : Colors.grey.shade300,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              selected ? Icons.check_circle : Icons.radio_button_unchecked,
+              size: 18.sp,
+              color: selected ? const Color(0xff1D4ED8) : Colors.grey,
+            ),
+
+            SizedBox(width: 8.w),
+
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 13.sp,
+                fontWeight: FontWeight.w600,
+                color: selected ? const Color(0xff1D4ED8) : Colors.black87,
+              ),
+            ),
+          ],
         ),
       ),
     );

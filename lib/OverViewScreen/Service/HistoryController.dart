@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/material.dart';
 import 'package:get/get_state_manager/src/simple/get_controllers.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
@@ -153,4 +154,49 @@ class Historycontroller extends GetxController {
     isLoadMore = false;
     update();
   }
+
+
+  Future<bool> addInvoicePayments({
+  required int invoiceId,
+  required List<Map<String, dynamic>> payments,
+})async {
+  try {
+    isLoading = true;
+    update();
+
+    final response = await http.post(
+      Uri.parse(
+        "$baseUrl/billing/invoices/$invoiceId/payments",
+      ),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $accessToken",
+      },
+      body: jsonEncode({
+        "payments": payments,
+      }),
+    );
+
+    debugPrint("========== ADD PAYMENT ==========");
+    debugPrint("URL: $baseUrl/billing/invoices/$invoiceId/payments");
+    debugPrint("Body: ${jsonEncode({"payments": payments})}");
+    debugPrint("Status: ${response.statusCode}");
+    debugPrint("Response: ${response.body}");
+    debugPrint("================================");
+
+    if (response.statusCode == 200 ||
+        response.statusCode == 201) {
+      return true;
+    }
+
+    return false;
+  } catch (e) {
+    debugPrint("Add Payment Error: $e");
+    return false;
+  } finally {
+    isLoading = false;
+    update();
+  }
+}
+
 }

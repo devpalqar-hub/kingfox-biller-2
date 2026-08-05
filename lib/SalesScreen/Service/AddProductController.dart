@@ -36,6 +36,7 @@ class AddProductController extends GetxController {
   List<StaffModel> staffList = [];
   StaffModel? selectedStaff;
   String selectedPaymentMethod = "cash";
+  bool isPending = false;
 
   List<BillingSessions> session = [];
   int? selectedSessionId = null;
@@ -492,7 +493,7 @@ class AddProductController extends GetxController {
 
     List<Map<String, dynamic>> splitPayment = [];
 
-    if (selectedPaymentMethods.length == 2) {
+    if (!isPending && selectedPaymentMethods.length == 2) {
       if (selectedPaymentMethods.contains("cash")) {
         splitPayment.add({"type": "CASH", "amount": cashAmount});
       }
@@ -507,11 +508,13 @@ class AddProductController extends GetxController {
     }
 
     final Map<String, dynamic> body = {
-      "paymentMethod": selectedPaymentMethods.length == 2
-          ? "SPLIT"
-          : selectedPaymentMethods.isNotEmpty
-          ? selectedPaymentMethods.first.toUpperCase()
-          : selectedPaymentMethod.toUpperCase(),
+     "paymentMethod": isPending
+    ? "CREDIT"
+    : selectedPaymentMethods.length == 2
+        ? "SPLIT"
+        : selectedPaymentMethods.isNotEmpty
+            ? selectedPaymentMethods.first.toUpperCase()
+            : selectedPaymentMethod.toUpperCase(),
       "customerName": customerName ?? "",
       "customerPhone": customerPhone ?? "",
       "customerEmail": customerEmail ?? "",
@@ -552,7 +555,7 @@ class AddProductController extends GetxController {
       body["splitPayment"] = splitPayment;
     }
 
-    if (selectedPaymentMethods.length == 2 &&
+    if (!isPending && selectedPaymentMethods.length == 2 &&
         totalPaid != (cart?.grandFinalTotal ?? 0)) {
       voucherError = "Split payment total must equal bill amount";
       isLoading = false;
