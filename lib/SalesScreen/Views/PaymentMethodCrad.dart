@@ -174,7 +174,7 @@ class PaymentMethodCard extends StatelessWidget {
                 ),
               ),
               SizedBox(height: 12.h),
-
+              if (ctrl.selectedOrderType != "B2B") ...[
               Text(
                 "Payment Status",
                 style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600),
@@ -203,7 +203,7 @@ class PaymentMethodCard extends StatelessWidget {
                  
                 ],
               ),
-
+              ],
               if (!ctrl.isPending && ctrl.selectedPaymentMethods.length == 2) ...[
                 SizedBox(height: 8.h),
                 Row(

@@ -133,19 +133,23 @@ class OrderCompleteDialog extends StatelessWidget {
                             totalPaid: data.grandFinalTotal ?? 0,
                             tenderedAmount: _tenderedAmount,
                           ),
+                        
                           if (data.payments.isEmpty ||
                               data.payments.every(
                                 (e) => e.paymentMethod == null,
-                              ))
-                            SizedBox(height: 10.h),
-                          _sectionLabel(
-                            Icons.payments_outlined,
-                            'PAYMENT PENDING',
-                          ),
-                          _CompletePaymentCard(
-                            invoice: data,
-                            controller: Get.put(Historycontroller()),
-                          ),
+                              )) ...[
+                            SizedBox(height: 15.h),
+
+                            _sectionLabel(
+                              Icons.payments_outlined,
+                              'PAYMENT PENDING',
+                            ),
+
+                            _CompletePaymentCard(
+                              invoice: data,
+                              controller: Get.put(Historycontroller()),
+                            ),
+                          ],
                         ],
                       ),
                     ),
