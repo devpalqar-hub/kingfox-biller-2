@@ -1268,7 +1268,7 @@ class PrinterController extends GetxController {
 
     // ── Explicit "Transfer Receipt" title ────────
     bytes += generator.text(
-      "TRANSFER RECEIPT",
+      "DELIVERY CHALLAN",
       styles: const PosStyles(align: PosAlign.center, bold: true),
     );
 
@@ -1280,7 +1280,7 @@ class PrinterController extends GetxController {
 
     if (data.b2bDetails?.stockTransferId != null) {
       bytes += generator.row([
-        PosColumn(text: "Transfer Ref#", width: 5),
+        PosColumn(text: "Challan No#", width: 5),
         PosColumn(
           text: "TRF-${data.b2bDetails!.stockTransferId}",
           width: 7,
@@ -1576,7 +1576,7 @@ class PrinterController extends GetxController {
               style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
             ),
             pw.Text(
-              isB2B ? "TRANSFER RECEIPT " : "TRANSFER RECEIPT",
+              isB2B ? "DELIVERY CHALLAN" : "DELIVERY CHALLAN",
               style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
             ),
             pw.SizedBox(height: 8),
@@ -1599,10 +1599,7 @@ class PrinterController extends GetxController {
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
-                pw.Text(
-                  "Transfer Ref#",
-                  style: const pw.TextStyle(fontSize: 10),
-                ),
+                pw.Text("Challan No#", style: const pw.TextStyle(fontSize: 10)),
                 pw.Text(
                   "TRF-${data.b2bDetails!.stockTransferId}",
                   style: const pw.TextStyle(fontSize: 10),
