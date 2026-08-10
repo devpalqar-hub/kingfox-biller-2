@@ -65,7 +65,7 @@ class AuthController extends GetxController {
     try {
       final response = await http
           .post(
-            Uri.parse("$baseUrl/auth/login"),
+            Uri.parse("$authbaseUrl/auth/login"),
             headers: {"Content-Type": "application/json"},
             body: jsonEncode({
               "email": trimmedEmail,

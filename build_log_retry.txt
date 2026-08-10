@@ -1,0 +1,10 @@
+The following plugins do not support Swift Package Manager for macos:
+  - flutter_thermal_printer
+  - printing
+  - universal_ble
+This will become an error in a future version of Flutter. Please contact the plugin maintainers to request Swift Package Manager adoption.
+Building macOS application...                                   
+warning: Code asset "package:objective_c/objective_c.dylib" has different framework names for different architectures. Picking "objective_c.framework" and ignoring "objective_c1.framework". This is likely an issue in the package providing the asset. Please report this to the package maintainers and ensure the "build.dart" hook produces consistent filenames.
+Project /Users/reemasalam/Desktop/kingfoxbiller built and packaged successfully.
+warning: Run script build phase 'Run Script' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'Flutter Assemble' from project 'Runner')
+✓ Built build/macos/Build/Products/Release/kinfox_biller.app (55.6MB)

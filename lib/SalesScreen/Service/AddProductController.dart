@@ -52,6 +52,7 @@ class AddProductController extends GetxController {
   final voucherCountController = TextEditingController();
   final couponController = TextEditingController();
   final discountController = TextEditingController();
+  final referenceNumberController = TextEditingController();
 
   List<String> selectedPaymentMethods = [];
   List<BranchModel> branches = [];
@@ -128,6 +129,7 @@ class AddProductController extends GetxController {
     voucherCountController.text = "1";
     couponController.clear();
     discountController.clear();
+    referenceNumberController.clear();
     update();
   }
 
@@ -153,6 +155,7 @@ class AddProductController extends GetxController {
     voucherCountController.dispose();
     couponController.dispose();
     discountController.dispose();
+    referenceNumberController.dispose();
   }
 
   void updateVoucherCount() {
@@ -398,41 +401,103 @@ class AddProductController extends GetxController {
     }
   }
 
+  
   Future searchProducts(String query) async {
-    if (query.isEmpty) {
-      searchProductsList.clear();
+  debugPrint("========== SEARCH PRODUCTS ==========");
+  debugPrint("Search Query: $query");
 
-      return;
-    }
+  if (query.isEmpty) {
+    debugPrint("Query is empty. Clearing search results.");
+    searchProductsList.clear();
+    update();
+    return;
+  }
 
-    isLoading = true;
-    final url = "$baseUrl/billing/product-search?q=$query";
+  isLoading = true;
+  update();
+
+  final url = "$baseUrl/billing/product-search?q=$query";
+
+  debugPrint("Request URL: $url");
+  // debugPrint("Access Token Available: ${accessToken.isNotEmpty}");
+
+  try {
     final response = await http.get(
       Uri.parse(url),
-      headers: {"Authorization": "Bearer $accessToken"},
+      headers: {
+        "Authorization": "Bearer $accessToken",
+        "Content-Type": "application/json",
+      },
     );
+
+    debugPrint("========== SEARCH PRODUCTS RESPONSE ==========");
+    debugPrint("Status Code: ${response.statusCode}");
+    debugPrint("Response Headers: ${response.headers}");
+    debugPrint("Raw Response Body:");
+    debugPrint(response.body);
 
     if (response.statusCode == 200) {
       final decoded = jsonDecode(response.body);
+
+      debugPrint("Decoded Response Type: ${decoded.runtimeType}");
+      debugPrint("Decoded Response:");
+      debugPrint(decoded.toString());
 
       List data = [];
 
       if (decoded is List) {
         data = decoded;
+
+        debugPrint("Response is a List");
+        debugPrint("Product Count: ${data.length}");
       } else if (decoded is Map && decoded['data'] != null) {
         data = decoded['data'];
+
+        debugPrint("Response is a Map");
+        debugPrint("data field type: ${decoded['data'].runtimeType}");
+        debugPrint("Product Count: ${data.length}");
+      } else {
+        debugPrint("WARNING: Unexpected response format");
+        debugPrint("Decoded keys: ${decoded is Map ? decoded.keys : 'N/A'}");
+      }
+
+      debugPrint("========== PRODUCT DATA ==========");
+
+      for (var i = 0; i < data.length; i++) {
+        debugPrint("Product [$i]: ${data[i]}");
       }
 
       searchProductsList = data
           .map((e) => ProductVariantModel.fromJson(e))
           .toList();
+
+      debugPrint(
+        "Parsed Products Count: ${searchProductsList.length}",
+      );
+
+      debugPrint("========================================");
     } else {
+      debugPrint("SEARCH API FAILED");
+      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint("Error Response: ${response.body}");
+
       searchProductsList = [];
     }
+  } catch (e, stackTrace) {
+    debugPrint("SEARCH PRODUCTS EXCEPTION:");
+    debugPrint(e.toString());
+    debugPrint("Stack Trace:");
+    debugPrint(stackTrace.toString());
 
-    isLoading = false;
-    update();
+    searchProductsList = [];
   }
+
+  isLoading = false;
+  update();
+
+  debugPrint("========== SEARCH PRODUCTS END ==========");
+}
+
 
   Future<bool> checkoutCart({
     required String paymentMethod,
@@ -441,6 +506,7 @@ class AddProductController extends GetxController {
     String? customerEmail,
     String? customerAddress,
     String? couponCode,
+    String? refNo,
     int? campaignId,
     int? voucherCount,
     double? manualDiscountAmount,
@@ -508,19 +574,25 @@ class AddProductController extends GetxController {
     }
 
     final Map<String, dynamic> body = {
-     "paymentMethod": isPending
-    ? "CREDIT"
-    : selectedPaymentMethods.length == 2
-        ? "SPLIT"
-        : selectedPaymentMethods.isNotEmpty
-            ? selectedPaymentMethods.first.toUpperCase()
-            : selectedPaymentMethod.toUpperCase(),
+      "paymentMethod": isPending
+          ? "CREDIT"
+          : selectedPaymentMethods.length == 2
+          ? "SPLIT"
+          : selectedPaymentMethods.isNotEmpty
+          ? selectedPaymentMethods.first.toUpperCase()
+          : selectedPaymentMethod.toUpperCase(),
       "customerName": customerName ?? "",
       "customerPhone": customerPhone ?? "",
       "customerEmail": customerEmail ?? "",
       "customerAddress": customerAddress ?? "",
       "orderType": selectedOrderType,
     };
+
+    final trimmedRefNumber = refNo?.trim();
+
+    if (trimmedRefNumber != null && trimmedRefNumber.isNotEmpty) {
+      body["refNumber"] = trimmedRefNumber;
+    }
 
     if (couponCode != null && couponCode.isNotEmpty) {
       body["couponCode"] = couponCode;
@@ -555,7 +627,8 @@ class AddProductController extends GetxController {
       body["splitPayment"] = splitPayment;
     }
 
-    if (!isPending && selectedPaymentMethods.length == 2 &&
+    if (!isPending &&
+        selectedPaymentMethods.length == 2 &&
         totalPaid != (cart?.grandFinalTotal ?? 0)) {
       voucherError = "Split payment total must equal bill amount";
       isLoading = false;

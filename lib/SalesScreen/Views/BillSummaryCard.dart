@@ -28,8 +28,84 @@ class BillSummaryCard extends StatelessWidget {
                     SizedBox(height: 6.h),
                     const VoucherSelectionCard(),
                     SizedBox(height: 6.h),
+
                     const PaymentMethodCard(),
                     SizedBox(height: 6.h),
+
+                    // Reference Number
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12.w,
+                        vertical: 10.h,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8.r),
+                        border: Border.all(
+                          color: const Color(0xffE2E8F0),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            "Reference Number",
+                            style: TextStyle(
+                              fontSize: 13.sp,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xff334155),
+                            ),
+                          ),
+
+                          SizedBox(width: 16.w),
+
+                          Expanded(
+                            child: SizedBox(
+                              height: 38.h,
+                              child: TextField(
+                                controller: ctrl.referenceNumberController,
+                                decoration: InputDecoration(
+                                  hintText: "Enter reference number",
+                                  hintStyle: TextStyle(
+                                    fontSize: 12.sp,
+                                    color: const Color(0xff94A3B8),
+                                  ),
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 10.w,
+                                    vertical: 8.h,
+                                  ),
+                                  filled: true,
+                                  fillColor: const Color(0xffF8FAFC),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(6.r),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xffCBD5E1),
+                                    ),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(6.r),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xffCBD5E1),
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(6.r),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xff1D4ED8),
+                                      width: 1.2,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    SizedBox(height: 6.h),
+
                     OrderSummaryCard(
                       subtotal: cart?.subtotal ?? 0,
                       tax: cart?.gstAmount ?? 0,
@@ -98,6 +174,7 @@ class BillSummaryCard extends StatelessWidget {
                         customerName: ctrl.nameController.text,
                         customerPhone: ctrl.phoneController.text,
                         couponCode: ctrl.appliedCoupon,
+                         refNo: ctrl.referenceNumberController.text.trim(),
                         campaignId: ctrl.selectedCampaign?.id,
                         voucherCount:
                             int.tryParse(ctrl.voucherCountController.text) ?? 0,

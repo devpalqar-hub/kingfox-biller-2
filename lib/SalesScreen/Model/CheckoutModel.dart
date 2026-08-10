@@ -15,6 +15,7 @@ class CheckoutData {
   final double? finalAmount;
   final double? grandFinalTotal;
   final String? invoiceNumber;
+  final String? refNumber;
   final List<Payment> payments;
   final Customer? customer;
   final List<String> issuedVoucherCodes;
@@ -46,6 +47,7 @@ class CheckoutData {
     this.finalAmount,
     this.grandFinalTotal,
     this.invoiceNumber,
+    this.refNumber,
     this.orderType,
     this.payments = const [],
     this.customer,
@@ -85,6 +87,7 @@ class CheckoutData {
     finalAmount: (j['finalAmount'] as num?)?.toDouble(),
     grandFinalTotal: (j['grandFinalTotal'] as num?)?.toDouble(),
     invoiceNumber: j['invoiceNumber'],
+    refNumber: j['refNumber'],
     addons: (j['addons'] as List? ?? []).map((e) => Addon.fromJson(e)).toList(),
     totalAddonPrice: (j['totalAddonPrice'] as num?)?.toDouble(),
 

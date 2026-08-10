@@ -133,7 +133,7 @@ class OrderCompleteDialog extends StatelessWidget {
                             totalPaid: data.grandFinalTotal ?? 0,
                             tenderedAmount: _tenderedAmount,
                           ),
-                        
+
                           if (data.payments.isEmpty ||
                               data.payments.every(
                                 (e) => e.paymentMethod == null,
@@ -225,6 +225,25 @@ class OrderCompleteDialog extends StatelessWidget {
             bg: const Color(0xFF22C55E).withOpacity(0.10),
             border: const Color(0xFF22C55E).withOpacity(0.25),
           ),
+          const Spacer(),
+          if (data.refNumber != null && data.refNumber!.trim().isNotEmpty) ...[
+            Text(
+              'Reference Number ',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.35),
+                fontSize: 11.sp,
+              ),
+            ),
+            Text(
+              data.refNumber!,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.75),
+                fontSize: 11.sp,
+                fontWeight: FontWeight.w500,
+                fontFamily: 'monospace',
+              ),
+            ),
+          ],
           const Spacer(),
           Text(
             'Invoice ',
