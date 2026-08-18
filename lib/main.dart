@@ -6,11 +6,11 @@ import 'package:get/get.dart';
 import 'package:kinfox_biller/LoginScreen/Service/AuthController.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-String authbaseUrl = (false)
+String authbaseUrl = (true)
     ? "https://api.kingfox.palqar.cloud/v1"
     : "https://api.kingfoxclothing.com/v1";
 
-String baseUrl = (false)
+String baseUrl = (true)
     ? "https://api.kingfox.palqar.cloud/v1/protected/kingfox"
     : "https://api.kingfoxclothing.com/v1/protected/kingfox";
 String? accessToken;
