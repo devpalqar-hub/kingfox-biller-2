@@ -11,7 +11,8 @@ class OrderSummaryCard extends StatelessWidget {
       coupon,
       appliedReturnDiscount,
       grandTotal,
-      refundAmount;
+      refundAmount,
+      addonRefund;
   final VoidCallback onPrint;
 
   const OrderSummaryCard({
@@ -23,6 +24,7 @@ class OrderSummaryCard extends StatelessWidget {
     required this.appliedReturnDiscount,
     required this.grandTotal,
     required this.refundAmount,
+    this.addonRefund = 0,
     required this.onPrint,
   });
 
@@ -89,6 +91,8 @@ class OrderSummaryCard extends StatelessWidget {
             ),
           if (refundAmount > 0)
             _row("Refund Amount", refundAmount, isNegative: true),
+          if (addonRefund > 0)
+            _row("Addon Refund", addonRefund, isNegative: true),
         ],
       ),
     );

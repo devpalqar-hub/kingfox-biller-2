@@ -497,7 +497,10 @@ class PrinterController extends GetxController {
 
     labelValueRow('Invoice#', inv, bold: true);
     if (data.payments.isNotEmpty) {
-      int invoiceID = int.parse(data.payments.first.invoiceID ?? "0") + 881;
+      int invoiceID =
+          (data.sequenceNumber != "" && data.sequenceNumber != "null")
+          ? int.parse(data.sequenceNumber ?? "0")
+          : int.parse(data.payments.first.invoiceID ?? "0") + 881;
 
       labelValueRow('Bill No#', invoiceID.toString(), bold: true);
     }

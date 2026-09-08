@@ -29,6 +29,7 @@ class AddProductController extends GetxController {
   CartModel? cart;
   String? couponError;
   String? voucherError;
+  String? branchError;
   int? attendedByStaffId;
   String selectedOrderType = "OFFLINE"; // OFFLINE, ONLINE, B2B
   List<LuckyDrawCampaign> campaigns = [];
@@ -52,6 +53,7 @@ class AddProductController extends GetxController {
   final voucherCountController = TextEditingController();
   final couponController = TextEditingController();
   final discountController = TextEditingController();
+  final addonRefundController = TextEditingController();
   final referenceNumberController = TextEditingController();
 
   List<String> selectedPaymentMethods = [];
@@ -129,6 +131,7 @@ class AddProductController extends GetxController {
     voucherCountController.text = "1";
     couponController.clear();
     discountController.clear();
+    addonRefundController.clear();
     referenceNumberController.clear();
     update();
   }
@@ -155,6 +158,7 @@ class AddProductController extends GetxController {
     voucherCountController.dispose();
     couponController.dispose();
     discountController.dispose();
+    addonRefundController.dispose();
     referenceNumberController.dispose();
   }
 
@@ -210,6 +214,7 @@ class AddProductController extends GetxController {
     addons.clear();
     couponController.text = "";
     discountController.text = "";
+    addonRefundController.text = "";
     phoneController.text = "";
     nameController.text = "";
     selectedSessionId = selected;
@@ -224,6 +229,7 @@ class AddProductController extends GetxController {
     appliedCoupon = "";
     couponController.text = "";
     discountController.text = "";
+    addonRefundController.text = "";
     phoneController.text = "";
     nameController.text = "";
     update();
@@ -247,6 +253,7 @@ class AddProductController extends GetxController {
     appliedCoupon = "";
     couponController.text = "";
     discountController.text = "";
+    addonRefundController.text = "";
     phoneController.text = "";
     nameController.text = "";
     update();
@@ -327,6 +334,7 @@ class AddProductController extends GetxController {
     String? couponCode,
     double? manualDiscountAmount,
     double? manualDiscountPercent,
+    double? addonRefund,
     String? orderType,
   }) async {
     isLoading = true;
@@ -341,6 +349,8 @@ class AddProductController extends GetxController {
       manualDiscountAmount ??= double.tryParse(discountController.text.trim());
     }
 
+    addonRefund ??= double.tryParse(addonRefundController.text.trim());
+
     final queryParams = <String, String>{};
 
     if (applied.isNotEmpty) {
@@ -352,6 +362,10 @@ class AddProductController extends GetxController {
 
     if (manualDiscountPercent != null) {
       queryParams['manualDiscountPercent'] = manualDiscountPercent.toString();
+    }
+
+    if (addonRefund != null) {
+      queryParams['addonRefund'] = addonRefund.toString();
     }
 
     if (addons.isNotEmpty) queryParams['addons'] = jsonEncode(addons);
@@ -378,6 +392,13 @@ class AddProductController extends GetxController {
       cart = CartModel.fromJson(data);
       appliedCoupon = applied;
       selectedOrderType = appliedOrderType;
+
+      // If the return/refund items were cleared from the cart, the addon
+      // refund no longer applies — reset it back to 0 automatically.
+      if (cart!.returnItems.isEmpty && addonRefundController.text.isNotEmpty) {
+        addonRefundController.clear();
+      }
+
       if (applied.isNotEmpty && (cart?.couponDiscountAmount ?? 0) == 0) {
         couponError = "Invalid or expired coupon";
 
@@ -393,6 +414,7 @@ class AddProductController extends GetxController {
       return true;
     } else {
       cart = null;
+      addonRefundController.clear();
 
       couponError = "Failed to fetch cart";
       isLoading = false;
@@ -511,13 +533,22 @@ class AddProductController extends GetxController {
     int? voucherCount,
     double? manualDiscountAmount,
     double? manualDiscountPercent,
+    double? addonRefund,
     int? attendedByStaffId,
     int? targetBranchId,
   }) async {
     couponError = null;
     voucherError = null;
+    branchError = null;
 
     if (cart == null || (cart!.returnItems.isEmpty && cart!.items.isEmpty)) {
+      return false;
+    }
+
+    if (selectedOrderType == "B2B" &&
+        (targetBranchId ?? selectedBranchId) == null) {
+      branchError = "Please select a branch for B2B orders";
+      update();
       return false;
     }
 
@@ -542,6 +573,8 @@ class AddProductController extends GetxController {
     } else {
       manualDiscountAmount ??= double.tryParse(discountController.text.trim());
     }
+
+    addonRefund ??= double.tryParse(addonRefundController.text.trim());
 
     attendedByStaffId ??= selectedStaff?.id;
 
@@ -619,6 +652,10 @@ class AddProductController extends GetxController {
       body["manualDiscountPercent"] = manualDiscountPercent;
     }
 
+    if (addonRefund != null) {
+      body["addonRefund"] = addonRefund;
+    }
+
     if (attendedByStaffId != null) {
       body["attendedByStaffId"] = attendedByStaffId;
     }
@@ -674,6 +711,7 @@ class AddProductController extends GetxController {
       selectedBranchId = null;
 
       discountController.clear();
+      addonRefundController.clear();
       addons.clear();
 
       getSession(isFirst: true);

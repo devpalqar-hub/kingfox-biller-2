@@ -319,7 +319,12 @@ class OrderCompleteDialog extends StatelessWidget {
           ],
           if (data.payments.length > 1) ...[
             _metaSep(),
-            _metaItem('Payments', '${data.payments.length} methods'),
+            _metaItem('Payments :', '${data.payments.length} methods'),
+          ],
+
+          if (data.sequenceNumber != "null" && data.sequenceNumber != "") ...[
+            _metaSep(),
+            _metaItem('Bill No :', '${data.sequenceNumber}'),
           ],
         ],
       ),

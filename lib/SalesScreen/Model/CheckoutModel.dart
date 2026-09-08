@@ -1,5 +1,5 @@
 class CheckoutData {
-  final int ? id;
+  final int? id;
   final int? cartId;
   final double? gstPercent;
   final int? returnInvoiceId;
@@ -29,7 +29,9 @@ class CheckoutData {
   final String? orderType;
   final List<Addon> addons;
   final double? totalAddonPrice;
+  final double? addonRefund;
   final B2BDetails? b2bDetails;
+  final String? sequenceNumber;
 
   const CheckoutData({
     this.id,
@@ -62,7 +64,9 @@ class CheckoutData {
     this.attendedByStaffName,
     this.addons = const [],
     this.totalAddonPrice,
+    this.addonRefund,
     this.b2bDetails,
+    this.sequenceNumber,
   });
 
   factory CheckoutData.fromJson(Map<String, dynamic> j) => CheckoutData(
@@ -90,6 +94,7 @@ class CheckoutData {
     refNumber: j['refNumber'],
     addons: (j['addons'] as List? ?? []).map((e) => Addon.fromJson(e)).toList(),
     totalAddonPrice: (j['totalAddonPrice'] as num?)?.toDouble(),
+    addonRefund: (j['addonRefund'] as num?)?.toDouble(),
 
     payments: (j['payments'] as List? ?? [])
         .map((e) => Payment.fromJson(e))
@@ -104,6 +109,7 @@ class CheckoutData {
     appliedCouponDiscount: (j["appliedCouponDiscount"] ?? "0").toString(),
     createdAt: j["createdAt"],
     status: j["status"],
+    sequenceNumber: j["sequenceNumber"].toString(),
     returnCoupon: j["returnCoupon"] != null
         ? ReturnCoupon.fromJson(j["returnCoupon"])
         : null,

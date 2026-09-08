@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:kinfox_biller/SalesScreen/Service/AddProductController.dart';
@@ -31,6 +32,117 @@ class BillSummaryCard extends StatelessWidget {
 
                     const PaymentMethodCard(),
                     SizedBox(height: 6.h),
+
+                    // Addon Refund — only relevant when the cart has a
+                    // return/refund item; otherwise it stays at 0.
+                    if (cart != null && cart.returnItems.isNotEmpty) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.all(10.w),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8.r),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.replay_outlined,
+                                size: 16.sp,
+                                color: const Color(0xFF64748B),
+                              ),
+                              SizedBox(width: 6.w),
+                              Text(
+                                "Addon Refund",
+                                style: TextStyle(
+                                  fontSize: 14.sp,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 8.h),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Container(
+                                  height: 34.h,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(6.r),
+                                    border: Border.all(
+                                      color: const Color(0xFFE2E8F0),
+                                    ),
+                                  ),
+                                  child: TextField(
+                                    controller: ctrl.addonRefundController,
+                                    keyboardType: TextInputType.number,
+                                    style: TextStyle(fontSize: 14.sp),
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.allow(
+                                        RegExp(r'^\d*\.?\d{0,2}'),
+                                      ),
+                                      LengthLimitingTextInputFormatter(10),
+                                    ],
+                                    decoration: InputDecoration(
+                                      border: InputBorder.none,
+                                      contentPadding: EdgeInsets.symmetric(
+                                        horizontal: 10.w,
+                                        vertical: 8.h,
+                                      ),
+                                      hintText: "0.00",
+                                      isDense: true,
+                                      hintStyle: TextStyle(
+                                        fontSize: 13.sp,
+                                        color: const Color(0xFF94A3B8),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 8.w),
+                              GestureDetector(
+                                onTap: () async {
+                                  // if (ctrl.cart == null ||
+                                  //     ctrl.cart!.items.isEmpty) {
+                                  //   return;
+                                  // }
+                                  final refund =
+                                      double.tryParse(
+                                        ctrl.addonRefundController.text.trim(),
+                                      ) ??
+                                      0;
+                                  await ctrl.getCart(addonRefund: refund);
+                                },
+                                child: Container(
+                                  height: 34.h,
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 14.w,
+                                  ),
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF16A34A),
+                                    borderRadius: BorderRadius.circular(6.r),
+                                  ),
+                                  child: Text(
+                                    "Apply",
+                                    style: TextStyle(
+                                      fontSize: 13.sp,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 6.h),
+                    ],
 
                     // Reference Number
                     Container(
@@ -113,6 +225,7 @@ class BillSummaryCard extends StatelessWidget {
                       coupon: cart?.couponDiscountAmount ?? 0,
                       appliedReturnDiscount: cart?.appliedReturnDiscount ?? 0,
                       refundAmount: cart?.refundAmount ?? 0,
+                      addonRefund: cart?.addonRefund ?? 0,
                       grandTotal: cart?.grandFinalTotal ?? 0,
                       onPrint: () {},
                     ),
@@ -174,10 +287,13 @@ class BillSummaryCard extends StatelessWidget {
                         customerName: ctrl.nameController.text,
                         customerPhone: ctrl.phoneController.text,
                         couponCode: ctrl.appliedCoupon,
-                         refNo: ctrl.referenceNumberController.text.trim(),
+                        refNo: ctrl.referenceNumberController.text.trim(),
                         campaignId: ctrl.selectedCampaign?.id,
                         voucherCount:
                             int.tryParse(ctrl.voucherCountController.text) ?? 0,
+                        addonRefund: double.tryParse(
+                          ctrl.addonRefundController.text.trim(),
+                        ),
                         targetBranchId: ctrl.selectedOrderType == "B2B"
                             ? ctrl.selectedBranchId
                             : null,

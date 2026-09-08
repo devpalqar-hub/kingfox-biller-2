@@ -20,6 +20,7 @@ class CartModel {
   final double grandFinalTotal;
   final double manualDiscountAmount;
   final double finalAmountAfterManual;
+  final double addonRefund;
 
   final CouponModel? coupon;
 
@@ -42,6 +43,7 @@ class CartModel {
     required this.grandFinalTotal,
     required this.manualDiscountAmount,
     required this.finalAmountAfterManual,
+    this.addonRefund = 0,
     required this.addons,
 
     /// 🔥 NEW
@@ -84,6 +86,7 @@ class CartModel {
       finalAmountAfterCoupon: (json['finalAmountAfterCoupon'] ?? 0).toDouble(),
       manualDiscountAmount: (json['manualDiscountAmount'] ?? 0).toDouble(),
       finalAmountAfterManual: (json['finalAmountAfterManual'] ?? 0).toDouble(),
+      addonRefund: (json['addonRefund'] ?? 0).toDouble(),
       grandFinalTotal: (json['grandFinalTotal'] ?? 0).toDouble(),
       coupon: json['coupon'] != null
           ? CouponModel.fromJson(json['coupon'])

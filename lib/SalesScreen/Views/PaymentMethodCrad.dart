@@ -99,7 +99,7 @@ class PaymentMethodCard extends StatelessWidget {
                     value: ctrl.selectedBranchId,
                     isDense: true,
                     hint: Text(
-                      "Choose Branch (Optional)",
+                      "Choose Branch *",
                       style: TextStyle(fontSize: 12.sp, color: Colors.black),
                     ),
                     decoration: InputDecoration(
@@ -112,7 +112,11 @@ class PaymentMethodCard extends StatelessWidget {
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(6.r),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
+                        borderSide: BorderSide(
+                          color: ctrl.branchError?.isNotEmpty == true
+                              ? Colors.red
+                              : Colors.grey.shade300,
+                        ),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(6.r),
@@ -147,10 +151,19 @@ class PaymentMethodCard extends StatelessWidget {
                         .toList(),
                     onChanged: (value) {
                       ctrl.selectedBranchId = value;
+                      ctrl.branchError = null;
                       ctrl.update();
                     },
                   ),
                 ),
+                if (ctrl.branchError?.isNotEmpty == true)
+                  Padding(
+                    padding: EdgeInsets.only(top: 4.h),
+                    child: Text(
+                      ctrl.branchError!,
+                      style: TextStyle(color: Colors.red, fontSize: 11.sp),
+                    ),
+                  ),
                 SizedBox(height: 8.h),
               ],
 
