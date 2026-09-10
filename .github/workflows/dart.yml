@@ -102,6 +102,7 @@ jobs:
           echo "=== Generated installer.iss ==="
           cat installer.iss
 
+
       # 📦 Build installer
       - name: Build Installer
         run: iscc installer.iss
@@ -112,3 +113,40 @@ jobs:
         with:
           name: kingfox-biller-installer
           path: installer_output\KingfoxBillerSetup.exe
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.5'
+          channel: 'stable'
+
+      - name: Enable macOS Desktop
+        run: flutter config --enable-macos-desktop
+
+      - name: Verify Flutter & Dart version
+        run: |
+          flutter --version
+          dart --version
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build macOS App
+        run: flutter build macos --release
+
+      - name: List Build Output
+        run: |
+          echo "=== macOS Release folder ==="
+          find build/macos/Build/Products/Release -maxdepth 3 -print
+
+      - name: Upload macOS App
+        uses: actions/upload-artifact@v4
+        with:
+          name: kingfox-biller-macos
+          path: build/macos/Build/Products/Release/*.app
