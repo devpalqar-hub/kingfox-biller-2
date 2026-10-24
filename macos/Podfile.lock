@@ -1,42 +1,16 @@
 PODS:
-  - flutter_thermal_printer (0.0.1):
-    - FlutterMacOS
   - FlutterMacOS (1.0.0)
-  - printing (1.0.0):
-    - FlutterMacOS
-  - shared_preferences_foundation (0.0.1):
-    - Flutter
-    - FlutterMacOS
-  - universal_ble (0.0.1):
-    - Flutter
-    - FlutterMacOS
 
 DEPENDENCIES:
-  - flutter_thermal_printer (from `Flutter/ephemeral/.symlinks/plugins/flutter_thermal_printer/macos`)
   - FlutterMacOS (from `Flutter/ephemeral`)
-  - printing (from `Flutter/ephemeral/.symlinks/plugins/printing/macos`)
-  - shared_preferences_foundation (from `Flutter/ephemeral/.symlinks/plugins/shared_preferences_foundation/darwin`)
-  - universal_ble (from `Flutter/ephemeral/.symlinks/plugins/universal_ble/darwin`)
 
 EXTERNAL SOURCES:
-  flutter_thermal_printer:
-    :path: Flutter/ephemeral/.symlinks/plugins/flutter_thermal_printer/macos
   FlutterMacOS:
     :path: Flutter/ephemeral
-  printing:
-    :path: Flutter/ephemeral/.symlinks/plugins/printing/macos
-  shared_preferences_foundation:
-    :path: Flutter/ephemeral/.symlinks/plugins/shared_preferences_foundation/darwin
-  universal_ble:
-    :path: Flutter/ephemeral/.symlinks/plugins/universal_ble/darwin
 
 SPEC CHECKSUMS:
-  flutter_thermal_printer: 18af8e8199eec8cb8fbe2c89a65612da3aae0b8e
-  FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
-  printing: c4cf83c78fd684f9bc318e6aadc18972aa48f617
-  shared_preferences_foundation: 7036424c3d8ec98dfe75ff1667cb0cd531ec82bb
-  universal_ble: 45519b2aeafe62761e2c6309f8927edb5288b914
+  FlutterMacOS: c232990155153907050900a2e175c7773903ba4e
 
-PODFILE CHECKSUM: 54d867c82ac51cbd61b565781b9fada492027009
+PODFILE CHECKSUM: 1e95c36afbfd1cb6423ceca4de7a8e1b256fb6ac
 
 COCOAPODS: 1.16.2
