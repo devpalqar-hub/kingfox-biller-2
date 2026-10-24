@@ -19,7 +19,7 @@ dependencies:
   flutter_screenutil: ^5.9.3
   data_table_2: ^2.7.2
   intl: ^0.20.2
-  flutter_thermal_printer: ^2.3.0
+  flutter_thermal_printer: ^2.2.1
 
 
   cupertino_icons: ^1.0.8
