@@ -19,15 +19,15 @@ dependencies:
   flutter_screenutil: ^5.9.3
   data_table_2: ^2.7.2
   intl: ^0.20.2
-  flutter_thermal_printer: ^2.2.1
+  flutter_thermal_printer: ^2.3.0
 
 
   cupertino_icons: ^1.0.8
-  image: ^4.8.0
+  image: ^4.12.0
   path_provider: ^2.1.5
   flutter_barcode_listener: ^0.1.4
   pdf: ^3.12.0
-  printing: ^5.14.3
+  printing: ^5.15.1
 
 dev_dependencies:
   flutter_test:

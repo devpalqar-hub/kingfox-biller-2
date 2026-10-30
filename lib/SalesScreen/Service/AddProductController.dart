@@ -831,6 +831,8 @@ class AddProductController extends GetxController {
       staffList = [];
     }
 
+    print("fetchStaff status: ${response.statusCode}, total staff: ${staffList.length}");
+
     update();
   }
 
