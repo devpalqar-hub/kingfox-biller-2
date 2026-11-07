@@ -33,7 +33,7 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   flutter_thermal_printer: 42524b0c458d2cb3cc1daacb7f4a2692edd5d940
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
-  printing: c4cf83c78fd684f9bc318e6aadc18972aa48f617
+  printing: 7916ffaaede65713863e621de9a4742d9fa723b9
   shared_preferences_foundation: 7036424c3d8ec98dfe75ff1667cb0cd531ec82bb
   universal_ble: a322ebabee64f0ec27a313e89a5dd6967f37a60f
 
